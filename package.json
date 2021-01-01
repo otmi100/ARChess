@@ -1,0 +1,22 @@
+{
+  "private": true,
+  "scripts": {
+    "tsc": "tsc",
+    "tscw": "tsc --watch",
+    "wp": "webpack",
+    "wpw": "webpack --watch",
+    "serve": "http-server build"
+  },
+  "dependencies": {
+    "@types/node": "^14.14.16",
+    "@types/webgl2": "^0.0.5",
+    "copy-webpack-plugin": "^5.1.1",
+    "http-server": "^0.12.1",
+    "three": "^0.124.0",
+    "threex": "^1.0.0",
+    "ts-loader": "^7.0.0",
+    "typescript": "^3.8.3",
+    "webpack": "^4.42.1",
+    "webpack-cli": "^3.3.11"
+  }
+}
