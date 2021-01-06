@@ -24,19 +24,17 @@ import {
   Color,
   Vector,
   BoxGeometry,
+  ArrowHelper,
 } from "three";
 
 import ARButton from "./ARButton";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { BufferGeometryUtils } from "three/examples/jsm/utils/BufferGeometryUtils";
-import { SSL_OP_SSLEAY_080_CLIENT_DH_BUG } from "constants";
+import { ChessPiece, ChessPieceManager } from "./ChessPieces";
 
 enum GameMode {
   None,
-  PlaceChessboard,
-  PlaceFigure,
-  SelectObject,
-  Drag,
+  Setup,
+  Play,
 }
 
 let gameMode: GameMode = GameMode.None;
@@ -50,24 +48,26 @@ let cameraWorldQuaternion = new Quaternion();
 
 let reticle: Object3D;
 const chessBoard = new Group();
-const chessFigures: Object3D[] = [];
 
 let hitTestSource: XRHitTestSource | null = null;
 let hitTestSourceRequested = false;
 
+// GAME-MODE Buttons
 const putChessboardButton = <HTMLButtonElement>(
   document.getElementById("putChessboard")
 );
+const playButton = <HTMLButtonElement>document.getElementById("play");
+
+// SETUP Buttons
+const okButton = <HTMLButtonElement>document.getElementById("OK");
 const rotateChessboardButton = <HTMLButtonElement>(
   document.getElementById("rotate")
 );
-const putPawnButton = <HTMLButtonElement>document.getElementById("putPawn");
 const growButton = <HTMLButtonElement>document.getElementById("grow");
 const shrinkButton = <HTMLButtonElement>document.getElementById("shrink");
-const okButton = <HTMLButtonElement>document.getElementById("OK");
-const dragButton = <HTMLButtonElement>document.getElementById("drag");
 
 const cursor = new Vector3();
+const raycaster = new Raycaster();
 let controller: Group;
 
 const whiteSelected = new MeshStandardMaterial({
@@ -108,8 +108,8 @@ function init() {
   light.position.set(0.5, 1, 0.25);
   scene.add(light);
 
-  //const axesHelper = new AxesHelper(5);
-  //scene.add(axesHelper);
+  const axesHelper = new AxesHelper(5);
+  scene.add(axesHelper);
 
   //
 
@@ -132,9 +132,41 @@ function init() {
     controller.userData.isSelecting = false;
   }
 
+  let cursor2 = new Vector3();
   controller = renderer.xr.getController(0);
   controller.addEventListener("selectstart", onSelectStart);
   controller.addEventListener("selectend", onSelectEnd);
+  controller.addEventListener("select", () => {
+    /*
+    cursor2.set(0, 0, -0.2).applyMatrix4(controller.matrixWorld);
+    console.log(cursor2);
+
+    let cameraPos = new Vector3();
+    cameraPos.setFromMatrixPosition(camera.matrixWorld);
+    //raycaster.setFromCamera(cursor2, camera);
+    raycaster.set(cameraPos,cursor2);
+    const intersects = raycaster.intersectObjects(chessFigures, true);
+    console.log("Sending ray into direction");
+    console.log(raycaster.ray.direction);
+    console.log("Sending ray from origin");
+    console.log(raycaster.ray.origin);
+    let arrow = new ArrowHelper(raycaster.ray.direction, raycaster.ray.origin, 300, 0xff0000); 
+    scene.add(arrow);
+    console.log(arrow);
+
+    console.log(intersects);
+    if (intersects.length > 0) {
+      if (intersects[0].object == selectedElement) {
+        console.log("unselect object");
+        (<Mesh>intersects[0].object).material = whiteNotSelected;
+        selectedElement = null;
+      } else {
+        console.log("select object");
+        selectedElement = intersects[0].object;
+        (<Mesh>intersects[0].object).material = whiteSelected;
+      }
+    }*/
+  });
   controller.userData.skipFrames = 0;
   scene.add(controller);
 
@@ -160,7 +192,7 @@ function init() {
 
   type ChessBoardField = {
     field: Object3D;
-    placedFigure: Object3D | null;
+    placedPiece: Object3D | null;
   };
 
   const chessBoardFields: ChessBoardField[][] = [];
@@ -181,89 +213,58 @@ function init() {
       });
       const cube = new Mesh(geometry, material);
       chessBoard.add(cube);
-      boardRow.push({ field: cube, placedFigure: null });
+      boardRow.push({ field: cube, placedPiece: null });
       cube.position.set(x, 0, y);
     }
     chessBoardFields.push(boardRow);
   }
   chessBoard.scale.set(0.1, 0.1, 0.1);
-  chessBoard.add(chessBoard);
 
-  const loader = new GLTFLoader();
-  loader.load(
-    "./models/queen/scene.gltf",
-    function (gltf) {
-      console.log("loaded gltf");
-      console.log(gltf);
-      gltf.scene.children.forEach((model) => {
-        model.traverse((o) => {
-          (<Mesh>o).material = whiteNotSelected;
-        });
-        model.scale.set(0.1, 0.1, 0.1);
-        model.getObjectById;
-        console.log(model);
-        //chessBoard.add(object);
-        model.position.set(
-          chessBoardFields[1][1].field.position.x,
-          chessBoardFields[1][1].field.position.y,
-          chessBoardFields[1][1].field.position.z
-        );
-        chessFigures.push(model);
-        chessBoard.add(model);
-      });
-    },
-    undefined,
-    function (error) {
-      console.error(error);
-    }
-  );
-
+  const chessPieces = ChessPieceManager.getAllStartingPieces();
+  chessPieces.forEach((piece: ChessPiece) => {
+    piece.getObject3D().then((object) => {
+      console.log(object);
+      object.position.set(
+        chessBoardFields[piece.getPosition().x][piece.getPosition().y].field
+          .position.x,
+        chessBoardFields[piece.getPosition().x][piece.getPosition().y].field
+          .position.y,
+        chessBoardFields[piece.getPosition().x][piece.getPosition().y].field
+          .position.z
+      );
+      object.scale.set(0.1, 0.1, 0.1);
+      chessBoard.add(object);
+    });
+  });
   scene.add(chessBoard);
 
   putChessboardButton?.addEventListener("click", () => {
-    gameMode = GameMode.PlaceChessboard;
-    selectedElement = chessBoard;
+    gameMode = GameMode.Setup;
   });
   rotateChessboardButton?.addEventListener("click", () => {
     selectedElement?.rotateY(10);
   });
   growButton?.addEventListener("click", () => {
-    console.log("growing element");
-    console.log(selectedElement);
-    if (selectedElement) {
-      selectedElement.scale.x *= 1.1;
-      selectedElement.scale.y *= 1.1;
-      selectedElement.scale.z *= 1.1;
-    }
+    chessBoard.scale.x *= 1.1;
+    chessBoard.scale.y *= 1.1;
+    chessBoard.scale.z *= 1.1;
   });
   shrinkButton?.addEventListener("click", () => {
-    console.log("shrinking element");
-    console.log(selectedElement);
-    if (selectedElement) {
-      selectedElement.scale.x *= 0.9;
-      selectedElement.scale.y *= 0.9;
-      selectedElement.scale.z *= 0.9;
-    }
-  });
-
-  putPawnButton?.addEventListener("click", () => {
-    gameMode = GameMode.PlaceFigure;
+    chessBoard.scale.x *= 0.9;
+    chessBoard.scale.y *= 0.9;
+    chessBoard.scale.z *= 0.9;
   });
 
   okButton?.addEventListener("click", (event) => {
-    if (reticle.visible && gameMode === GameMode.PlaceChessboard) {
+    if (reticle.visible && gameMode === GameMode.Setup) {
       console.log("trying to place chessboard");
 
       chessBoard.position.setFromMatrixPosition(reticle.matrix);
       chessBoard.visible = true;
-    } else if (reticle.visible && gameMode === GameMode.PlaceFigure) {
-      //chessPawn.position.setFromMatrixPosition(reticle.matrix);
-      //chessPawn.visible = true;
-    } else if (gameMode === GameMode.Drag) {
     }
   });
-  dragButton.addEventListener("click", () => {
-    gameMode = GameMode.Drag;
+  playButton.addEventListener("click", () => {
+    gameMode = GameMode.Play;
   });
 
   let ring = new RingBufferGeometry(0.045, 0.05, 32).rotateX(-Math.PI / 2);
@@ -293,7 +294,6 @@ function animate() {
   renderer.setAnimationLoop(render);
 }
 
-const raycaster = new Raycaster();
 function handleController(controller: Group) {
   const userData = controller.userData;
 
@@ -304,7 +304,15 @@ function handleController(controller: Group) {
       userData.skipFrames--;
 
       raycaster.setFromCamera(cursor, camera);
-      const intersects = raycaster.intersectObjects(chessFigures, true);
+      const intersects = raycaster.intersectObjects(scene.children, true);
+      scene.add(
+        new ArrowHelper(
+          raycaster.ray.direction,
+          raycaster.ray.origin,
+          300,
+          0xff0000
+        )
+      );
 
       if (intersects.length > 0) {
         if (intersects[0].object == selectedElement) {
@@ -331,12 +339,9 @@ function render(timestamp: any, frame: any) {
   if (frame) {
     if (gameMode === GameMode.None) {
       chessBoard.visible = false;
-      gameMode = GameMode.PlaceChessboard;
+      gameMode = GameMode.Setup;
     }
-    if (
-      gameMode === GameMode.PlaceChessboard ||
-      gameMode === GameMode.PlaceFigure
-    ) {
+    if (gameMode === GameMode.Setup) {
       const referenceSpace = renderer.xr.getReferenceSpace();
       const session = renderer.xr.getSession();
 
@@ -374,7 +379,7 @@ function render(timestamp: any, frame: any) {
       } else {
         okButton.disabled = true;
       }
-    } else if (gameMode === GameMode.Drag) {
+    } else if (gameMode === GameMode.Play) {
       reticle.visible = false;
       handleController(controller);
     } else {
