@@ -1,5 +1,6 @@
-const path = require('path');
-const CopyWebpackPlugin = require('copy-webpack-plugin');
+const path = require("path");
+const fs = require("fs");
+const CopyWebpackPlugin = require("copy-webpack-plugin");
 
 module.exports = {
   mode: "development",
@@ -8,7 +9,7 @@ module.exports = {
     main: "./src/main.ts",
   },
   output: {
-    path: path.resolve(__dirname, 'build'),
+    path: path.resolve(__dirname, "build"),
     filename: "[name]-bundle.js",
   },
   resolve: {
@@ -22,10 +23,18 @@ module.exports = {
     ],
   },
   plugins: [
-    new CopyWebpackPlugin([
-      {
-        from: './html',
-      }
-    ]),
+    new CopyWebpackPlugin({
+      patterns: [{ from: "./html" }, { from: "./models", to: "./models" }],
+    }),
   ],
+  devServer: {
+    contentBase: path.join(__dirname, "dist"),
+    compress: true,
+    host: '0.0.0.0',
+    http2: true,
+    https: {
+      key: fs.readFileSync("/home/mitch/cert/server.key"),
+      cert: fs.readFileSync("/home/mitch/cert/server.crt"),
+    },
+  },
 };

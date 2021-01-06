@@ -1,0 +1,27 @@
+#overlay {
+  text-align: center;
+}
+#top-menu {
+  text-align: center;
+}
+#bottom-menu {
+  margin:auto;
+  text-align: center;
+  position: absolute;
+  bottom: 0px;
+  transform: translateY(-50%);
+}
+#bottom-menu button {
+  width: 50px;
+  height: 50px;
+  opacity: 50%;
+}
+#OK {
+  background-color: #4caf50;
+}
+#credit {
+  background: rgba(0, 0, 0, 0.5);
+  border:1px solid black;
+  font-size: xx-small;
+  color: white;
+}
