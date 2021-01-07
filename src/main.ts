@@ -17,20 +17,12 @@ import {
   Quaternion,
   AxesHelper,
   Group,
-  CylinderBufferGeometry,
-  MeshPhongMaterial,
-  Intersection,
-  MeshStandardMaterial,
-  Color,
-  Vector,
-  BoxGeometry,
-  ArrowHelper,
-  IcosahedronBufferGeometry,
 } from "three";
 
 import ARButton from "./ARButton";
 import { BufferGeometryUtils } from "three/examples/jsm/utils/BufferGeometryUtils";
 import { ChessBoard } from "./ChessBoard";
+import { ChessPiece } from "./ChessPieces";
 
 enum GameMode {
   None,
@@ -66,6 +58,7 @@ const rotateChessboardButton = <HTMLButtonElement>(
 );
 const growButton = <HTMLButtonElement>document.getElementById("grow");
 const shrinkButton = <HTMLButtonElement>document.getElementById("shrink");
+const unselectButton = <HTMLButtonElement>document.getElementById("unselect");
 
 const cursor = new Vector3();
 const raycaster = new Raycaster();
@@ -113,17 +106,72 @@ function init() {
   container.appendChild(renderer.domElement);
 
   controller = renderer.xr.getController(0);
-  controller.addEventListener("selectstart", () => {
-    controller.userData.isSelecting = true;
-    controller.userData.skipFrames = 2;
-  });
-  controller.addEventListener("selectend", () => {
-    controller.userData.isSelecting = false;
-  });
   controller.addEventListener("select", () => {
-    
+    cursor.set(0, 0, 0).applyMatrix4(controller.matrixWorld);
+    origin.set(
+      cameraWorldPosition.x,
+      cameraWorldPosition.y,
+      cameraWorldPosition.z
+    );
+    direction.subVectors(cursor, origin).normalize();
+    //console.log("raycast from camera"), console.log(cameraWorldPosition);
+    //console.log("raycast to cursor"), console.log(cursor);
+    raycaster.set(origin, direction);
+
+    if (chessBoard.getSelectedPiece()) {
+      // move a piece
+      console.log(chessBoard.getSelectedPiece());
+      console.log("choose where to move");
+      const intersects = raycaster.intersectObjects(
+        chessBoard.getAllFieldObjects(),
+        true
+      );
+
+      if (intersects.length > 0) {
+        console.log("found field to move to");
+        console.log(intersects[0].object.position);
+        chessBoard.moveSelectedPiece({
+          x: intersects[0].object.position.x,
+          y: intersects[0].object.position.z,
+        });
+        chessBoard.unSelectPiece();
+      }
+    } else {
+      // Select a piece
+      console.log("trying to select piece");
+      console.log(chessBoard.getAllVisiblePieceObjects());
+      const intersects = raycaster.intersectObjects(
+        chessBoard.getAllVisiblePieceObjects(),
+        true
+      );
+      if (intersects.length > 0) {
+        console.log(intersects);
+        console.log("found intersecting objects");
+        let nearestObject = intersects[0].object;
+        let chessPiece: Object3D | null | undefined;
+        while (chessPiece === undefined) {
+          if (
+            nearestObject.parent &&
+            nearestObject.parent.name === "ChessBoard"
+          ) {
+            chessPiece = nearestObject;
+          } else {
+            if (nearestObject.parent) {
+              nearestObject = nearestObject.parent;
+            } else {
+              chessPiece = null;
+              console.log("no chess piece found to select");
+            }
+          }
+        }
+        if (chessPiece) {
+          console.log("found chess piece to select");
+          console.log(chessPiece.position);
+          chessBoard.selectPiece(chessPiece);
+        }
+      }
+    }
   });
-  controller.userData.skipFrames = 0;
   scene.add(controller);
 
   //
@@ -169,6 +217,9 @@ function init() {
   playButton.addEventListener("click", () => {
     gameMode = GameMode.Play;
   });
+  unselectButton.addEventListener("click", () => {
+    chessBoard.unSelectPiece();
+  });
 
   let ring = new RingBufferGeometry(0.045, 0.05, 32).rotateX(-Math.PI / 2);
   let dot = new CircleBufferGeometry(0.005, 32).rotateX(-Math.PI / 2);
@@ -200,76 +251,6 @@ function animate() {
 let origin: Vector3 = new Vector3();
 let direction: Vector3 = new Vector3();
 //let hexColors = [0x483D8B, 0xcd0000, 0x227744, 0x000000, 0xFFFFFF];
-function play(controller: Group) {
-  const userData = controller.userData;
-
-  cursor.set(0, 0, 0).applyMatrix4(controller.matrixWorld);
-
-  if (userData.isSelecting === true) {
-    if (userData.skipFrames >= 0) {
-      userData.skipFrames--;
-
-      origin.set(
-        cameraWorldPosition.x,
-        cameraWorldPosition.y,
-        cameraWorldPosition.z
-      );
-      direction.subVectors(cursor, origin).normalize();
-      //console.log("raycast from camera"), console.log(cameraWorldPosition);
-      //console.log("raycast to cursor"), console.log(cursor);
-
-      raycaster.set(origin, direction);
-      /*scene.add(
-    new ArrowHelper(
-      raycaster.ray.direction,
-      raycaster.ray.origin,
-      300,
-      hexColors.pop()
-    )
-  );*/
-
-      if (chessBoard.getSelectedPiece()) {
-        // move a piece
-        console.log(chessBoard.getSelectedPiece());
-        console.log("choose where to move");
-        const intersects = raycaster.intersectObjects(
-          chessBoard.getAllFieldObjects(),
-          true
-        );
-
-        if (intersects.length > 0) {
-          console.log("found field");
-          console.log(intersects[0].object.position);
-          chessBoard.moveSelectedPiece({
-            x: intersects[0].object.position.x,
-            y: intersects[0].object.position.z,
-          });
-          chessBoard.unSelectPiece();
-        }
-      } else {
-        // Select a piece
-        console.log("select piece");
-        console.log(chessBoard.getAllVisiblePieceObjects());
-        const intersects = raycaster.intersectObjects(
-          chessBoard.getAllVisiblePieceObjects(),
-          true
-        );
-        if (intersects.length > 0) {
-          console.log("found piece");
-          console.log(intersects[0].object.position);
-          chessBoard.selectPiece(intersects[0].object);
-          userData.isSelecting = false; //stop until next touch start
-        }
-      }
-
-      console.log("start at");
-      console.log(cursor);
-    } else {
-      console.log("drag to");
-      console.log(cursor);
-    }
-  }
-}
 
 function render(timestamp: any, frame: any) {
   if (frame) {
@@ -317,7 +298,7 @@ function render(timestamp: any, frame: any) {
       }
     } else if (gameMode === GameMode.Play) {
       reticle.visible = false;
-      play(controller);
+      //play(controller);
     } else {
       reticle.visible = false;
     }

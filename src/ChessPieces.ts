@@ -1,4 +1,4 @@
-import { Color, Group, Mesh, MeshStandardMaterial, Object3D } from "three";
+import { Color, Material, Mesh, MeshStandardMaterial, Object3D } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { Position } from "./ChessBoard";
 
@@ -11,30 +11,38 @@ type StartingPosition = {
 type MaterialDefinition = {
   playingColor: PlayingColor;
   selected: boolean;
-  materialColor: number;
+  material: Material;
 };
 
 export abstract class ChessPiece {
-  static material: MaterialDefinition[] = [
+  static materialDefinitions: MaterialDefinition[] = [
     {
       playingColor: "BLACK",
       selected: false,
-      materialColor: 0x464646,
+      material: new MeshStandardMaterial({
+        color: new Color().set(0x464646),
+      }),
     },
     {
       playingColor: "BLACK",
       selected: true,
-      materialColor: 0x823b49,
+      material: new MeshStandardMaterial({
+        color: new Color().set(0x823b49),
+      }),
     },
     {
       playingColor: "WHITE",
       selected: false,
-      materialColor: 0xebe7e7
+      material: new MeshStandardMaterial({
+        color: new Color().set(0xebe7e7),
+      }),
     },
     {
       playingColor: "WHITE",
       selected: true,
-      materialColor: 0xd6b2c8,
+      material: new MeshStandardMaterial({
+        color: new Color().set(0xd6b2c8),
+      }),
     },
   ];
 
@@ -50,13 +58,19 @@ export abstract class ChessPiece {
   }
 
   async getObject3D(): Promise<Object3D> {
-    return new Promise<Object3D>((resolve) => {
+    return new Promise<Object3D>((resolve, reject) => {
       if (!this.object3D) {
         this.loadModel(this.modelFile).then((model) => {
           console.log("lazy loaded model. applying texture");
-          this.object3D = model;
-          this.applyColorAndTexture();
-          resolve(this.object3D);
+
+          //let object = model.getObjectByName(this.modelName);
+          if (model) {
+            this.object3D = model;
+            this.applyMaterialForAllPieces();
+            resolve(this.object3D);
+          } else {
+            reject("could not find model " + this.modelFile);
+          }
         });
       } else {
         resolve(this.object3D);
@@ -82,22 +96,7 @@ export abstract class ChessPiece {
   select() {
     if (this.object3D) {
       let object = this.object3D;
-      let material = ChessPiece.material.find(
-        (materialdef) =>
-          materialdef.playingColor === this.playingColor &&
-          materialdef.selected === true
-      );
-      console.log("applying material for selected piece");
-      console.log(material);
-      if (material) {
-        (<Mesh>object).material = new MeshStandardMaterial({
-          color: new Color().set(material.materialColor),
-        });
-      } else {
-        throw new Error(
-          "Material not found for " + this.playingColor + " and selected"
-        );
-      }
+      this.applyMaterial(object, true);
     } else {
       throw new Error("3D Object not loaded.");
     }
@@ -106,23 +105,28 @@ export abstract class ChessPiece {
   unSelect() {
     if (this.object3D) {
       let object = this.object3D;
-      let material = ChessPiece.material.find(
-        (materialdef) =>
-          materialdef.playingColor === this.playingColor &&
-          materialdef.selected === false
-      );
-      if (material) {
-        (<Mesh>object).material = new MeshStandardMaterial({
-          color: new Color().set(material.materialColor),
-        });
+      this.applyMaterial(object, false);
+    } else {
+      throw new Error("3D Object not loaded.");
+    }
+  }
+
+  private applyMaterial(object: Object3D, selected: boolean) {
+    let materialDefinition = ChessPiece.materialDefinitions.find(
+      (materialdef) =>
+        materialdef.playingColor === this.playingColor &&
+        materialdef.selected === selected
+    );
+
+    object.traverse((o) => {
+      if (materialDefinition && materialDefinition.material) {
+        (<Mesh>o).material = materialDefinition.material;
       } else {
         throw new Error(
           "Material not found for " + this.playingColor + " and not selected"
         );
       }
-    } else {
-      throw new Error("3D Object not loaded.");
-    }
+    });
   }
 
   private loadModel(filename: string): Promise<Object3D> {
@@ -142,10 +146,10 @@ export abstract class ChessPiece {
     });
   }
 
-  private applyColorAndTexture() {
+  private applyMaterialForAllPieces() {
     if (this.object3D) {
       let object = this.object3D;
-      let material = Pawn.material.find(
+      let material = Pawn.materialDefinitions.find(
         (materialdef) =>
           materialdef.playingColor === this.playingColor &&
           materialdef.selected === false
@@ -156,15 +160,10 @@ export abstract class ChessPiece {
           " " +
           this.playingColor
       );
-      if (material) {
-        (<Mesh>object).material = new MeshStandardMaterial({
-          color: new Color().set(material.materialColor),
-        });
-      } else {
-        throw new Error(
-          "Material not found for " + this.playingColor + " and not selected"
-        );
-      }
+      console.log(object);
+      object.children.forEach((model) => {
+        this.applyMaterial(model, false);
+      });
     } else {
       throw new Error("3D Object not loaded.");
     }
@@ -173,6 +172,7 @@ export abstract class ChessPiece {
 
 export class Pawn extends ChessPiece {
   modelFile: string = "./models/pawn/scene.gltf";
+  modelName = "Chess_Pawn";
 
   public static startingPositions: StartingPosition[] = [
     {
@@ -206,6 +206,7 @@ export class Pawn extends ChessPiece {
 
 export class King extends ChessPiece {
   modelFile: string = "./models/king/scene.gltf";
+  modelName = "Chess_King";
 
   public static startingPositions: StartingPosition[] = [
     {
@@ -221,6 +222,7 @@ export class King extends ChessPiece {
 
 export class Queen extends ChessPiece {
   modelFile: string = "./models/queen/scene.gltf";
+  modelName = "Chess_Queen";
 
   public static startingPositions: StartingPosition[] = [
     {
@@ -236,6 +238,7 @@ export class Queen extends ChessPiece {
 
 export class Rook extends ChessPiece {
   modelFile: string = "./models/rook/scene.gltf";
+  modelName = "Chess_Rook";
 
   public static startingPositions: StartingPosition[] = [
     {
@@ -257,6 +260,7 @@ export class Rook extends ChessPiece {
 
 export class Bishop extends ChessPiece {
   modelFile: string = "./models/bishop/scene.gltf";
+  modelName = "Chess_Bishop";
 
   public static startingPositions: StartingPosition[] = [
     {
@@ -278,6 +282,7 @@ export class Bishop extends ChessPiece {
 
 export class Knight extends ChessPiece {
   modelFile: string = "./models/knight/scene.gltf";
+  modelName = "Chess_Knight";
 
   public static startingPositions: StartingPosition[] = [
     {

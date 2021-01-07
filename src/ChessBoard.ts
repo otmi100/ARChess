@@ -34,6 +34,7 @@ export class ChessBoard {
   private selectedPiece: ChessPiece | undefined;
 
   constructor() {
+    this.chessBoardObject.name = "ChessBoard";
     this.generateFields();
     this.loadAndPositionAllPieces();
 
@@ -104,8 +105,10 @@ export class ChessBoard {
   }
 
   getSelectedPiece(): Object3D | undefined {
-    if(this.selectedPiece) {
-      console.log("returning selected piece of " + this.selectedPiece.getPosition());
+    if (this.selectedPiece) {
+      console.log(
+        "returning selected piece of " + this.selectedPiece.getPosition()
+      );
       return this.selectedPiece?.object3D;
     } else {
       console.log("nothing selected");
@@ -115,7 +118,14 @@ export class ChessBoard {
 
   moveSelectedPiece(position: Position) {
     if (this.selectedPiece) {
+      let oldPosition = this.selectedPiece.getPosition();
+      if (oldPosition) {
+        this.chessBoardFields[oldPosition.x][oldPosition.y].placedPiece = null;
+      }
       this.selectedPiece.setPosition(position);
+      this.chessBoardFields[position.x][
+        position.y
+      ].placedPiece = this.selectedPiece;
       this.selectedPiece.unSelect();
     } else {
       throw new Error("No piece selected. Cannot move..");
@@ -130,7 +140,9 @@ export class ChessBoard {
         let position = piece.getPosition();
         if (position) {
           object.position.copy(this.getFieldPosition(position));
-          let field = this.chessBoardFields[position.x][position.y].placedPiece = piece;
+          let field = (this.chessBoardFields[position.x][
+            position.y
+          ].placedPiece = piece);
         }
         object.scale.set(0.25, 0.25, 0.25);
         this.chessBoardObject.add(object);
