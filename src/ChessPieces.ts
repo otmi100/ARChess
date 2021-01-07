@@ -1,45 +1,48 @@
-import { Color, Mesh, MeshStandardMaterial, Object3D } from "three";
+import { Color, Group, Mesh, MeshStandardMaterial, Object3D } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
+import { Position } from "./ChessBoard";
 
 type PlayingColor = "WHITE" | "BLACK";
-type Position = {
-  x: number;
-  y: number;
-};
 type StartingPosition = {
   color: PlayingColor;
   position: Position[];
 };
 
-export class ChessPieceManager {
-  static getAllStartingPieces(): ChessPiece[] {
-    let pieceTypes = [Bishop, King, Knight, Pawn, Queen, Rook];
-    let piece: ChessPiece[] = [];
-
-    pieceTypes.forEach(type => {
-        type.startingPositions.forEach((startingPosition) => {
-          startingPosition.position.forEach((position) => {
-            piece.push(new type(startingPosition.color, position));
-          });
-        });
-    })
-    return piece;
-  }
-}
+type MaterialDefinition = {
+  playingColor: PlayingColor;
+  selected: boolean;
+  materialColor: number;
+};
 
 export abstract class ChessPiece {
-  static whiteNotSelected = new MeshStandardMaterial({
-    color: new Color().set(0xf0cfdc),
-  });
-  static blackNotSelected = new MeshStandardMaterial({
-    color: new Color().set(0x3a1e1e),
-  });
+  static material: MaterialDefinition[] = [
+    {
+      playingColor: "BLACK",
+      selected: false,
+      materialColor: 0x464646,
+    },
+    {
+      playingColor: "BLACK",
+      selected: true,
+      materialColor: 0x823b49,
+    },
+    {
+      playingColor: "WHITE",
+      selected: false,
+      materialColor: 0xebe7e7
+    },
+    {
+      playingColor: "WHITE",
+      selected: true,
+      materialColor: 0xd6b2c8,
+    },
+  ];
 
-  private object3D: Object3D | undefined = undefined;
+  object3D: Object3D | undefined = undefined;
   static loader = new GLTFLoader();
   abstract modelFile: string;
   private playingColor: PlayingColor;
-  private position: Position;
+  private position: Position | null;
 
   constructor(playingColor: PlayingColor, position: Position) {
     this.playingColor = playingColor;
@@ -61,8 +64,65 @@ export abstract class ChessPiece {
     });
   }
 
-  getPosition(): Position {
+  getPosition(): Position | null {
     return this.position;
+  }
+
+  setPosition(position: Position | null) {
+    if (position !== null && this.object3D) {
+      this.object3D.position.set(position.x, 0, position.y);
+      this.position = position;
+    } else if (position === null && this.object3D) {
+      this.object3D.visible = false;
+    } else {
+      console.error("cannot set position");
+    }
+  }
+
+  select() {
+    if (this.object3D) {
+      let object = this.object3D;
+      let material = ChessPiece.material.find(
+        (materialdef) =>
+          materialdef.playingColor === this.playingColor &&
+          materialdef.selected === true
+      );
+      console.log("applying material for selected piece");
+      console.log(material);
+      if (material) {
+        (<Mesh>object).material = new MeshStandardMaterial({
+          color: new Color().set(material.materialColor),
+        });
+      } else {
+        throw new Error(
+          "Material not found for " + this.playingColor + " and selected"
+        );
+      }
+    } else {
+      throw new Error("3D Object not loaded.");
+    }
+  }
+
+  unSelect() {
+    if (this.object3D) {
+      let object = this.object3D;
+      let material = ChessPiece.material.find(
+        (materialdef) =>
+          materialdef.playingColor === this.playingColor &&
+          materialdef.selected === false
+      );
+      if (material) {
+        (<Mesh>object).material = new MeshStandardMaterial({
+          color: new Color().set(material.materialColor),
+        });
+      } else {
+        throw new Error(
+          "Material not found for " + this.playingColor + " and not selected"
+        );
+      }
+    } else {
+      throw new Error("3D Object not loaded.");
+    }
   }
 
   private loadModel(filename: string): Promise<Object3D> {
@@ -70,8 +130,8 @@ export abstract class ChessPiece {
       ChessPiece.loader.load(
         filename,
         function (gltf) {
-          console.log("loaded gltf");
-          console.log(gltf);
+          //console.log("loaded gltf");
+          //console.log(gltf);
           resolve(gltf.scene);
         },
         undefined,
@@ -84,14 +144,26 @@ export abstract class ChessPiece {
 
   private applyColorAndTexture() {
     if (this.object3D) {
-      if (this.playingColor === "WHITE") {
-        this.object3D.traverse((o) => {
-          (<Mesh>o).material = Pawn.whiteNotSelected;
+      let object = this.object3D;
+      let material = Pawn.material.find(
+        (materialdef) =>
+          materialdef.playingColor === this.playingColor &&
+          materialdef.selected === false
+      );
+      console.log(
+        "applying material for loaded model " +
+          typeof this +
+          " " +
+          this.playingColor
+      );
+      if (material) {
+        (<Mesh>object).material = new MeshStandardMaterial({
+          color: new Color().set(material.materialColor),
         });
       } else {
-        this.object3D.traverse((o) => {
-          (<Mesh>o).material = Pawn.blackNotSelected;
-        });
+        throw new Error(
+          "Material not found for " + this.playingColor + " and not selected"
+        );
       }
     } else {
       throw new Error("3D Object not loaded.");
