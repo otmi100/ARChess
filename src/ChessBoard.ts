@@ -1,9 +1,11 @@
 import {
   BoxGeometry,
   Group,
+  Matrix4,
   Mesh,
   MeshStandardMaterial,
   Object3D,
+  Quaternion,
   Vector3,
 } from "three";
 import {
@@ -38,7 +40,8 @@ export class ChessBoard {
     this.generateFields();
     this.loadAndPositionAllPieces();
 
-    this.chessBoardObject.scale.set(0.1, 0.1, 0.1);
+    this.chessBoardObject.scale.set(0.05, 0.05, 0.05);
+    this.chessBoardObject.visible = false;
   }
 
   getAllVisiblePieceObjects(): Object3D[] {
@@ -114,6 +117,27 @@ export class ChessBoard {
       console.log("nothing selected");
       return undefined;
     }
+  }
+
+  rotateY (angle: number = 10) {
+    this.chessBoardObject.rotateY(angle);
+  }
+
+  grow () {
+    this.chessBoardObject.scale.x *= 1.1;
+    this.chessBoardObject.scale.y *= 1.1;
+    this.chessBoardObject.scale.z *= 1.1;
+  }
+
+  shrink() {
+    this.chessBoardObject.scale.x *= 0.9;
+    this.chessBoardObject.scale.y *= 0.9;
+    this.chessBoardObject.scale.z *= 0.9;
+  }
+
+  place(matrix4: Matrix4) {
+    this.chessBoardObject.position.setFromMatrixPosition(matrix4);
+    this.chessBoardObject.visible = true;
   }
 
   moveSelectedPiece(position: Position) {

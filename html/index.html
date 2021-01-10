@@ -8,23 +8,21 @@
   </head>
   <body>
     <header>
-      <h1>Immersive AR with Three.js</h1>
+      <h1>ARChess</h1>
     </header>
     <script type="module" src="main-bundle.js"></script>
     <div id="overlay">
       <div id="top-menu">
-        <button id="putChessboard">Place Chessboard</button>
-        <button id="play">Play</button>
+        <div><button id="setup">Setup Mode</button></div>
+        <div id="setupHelptext">Move the camera slowly around until you see a white circle. Touch screen to place Chessboard.</a></div>
       </div>
-
-      <div id="bottom-menu">
-        <button id="OK">DO IT</button>
+      
+      <div id="setup-menu">
+        <button id="place">Place</button>
         <button id="rotate">Rotate</button>
         <button id="grow">Grow</button>
         <button id="shrink">Shrink</button>
-        <button id="unselect">Unselect</button>
-        <div id="credit">Figures: Low Poly Chess - by <a href="https://sketchfab.com/marcelo.medeirossilva">marcelo.medeirossilva.</a>
-        </div>
+        <div id="credit">Figures: Low Poly Chess - by <a href="https://sketchfab.com/marcelo.medeirossilva">marcelo.medeirossilva.</a></div>
       </div>
     </div>
   </body>
