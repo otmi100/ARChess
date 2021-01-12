@@ -1,3 +1,4 @@
+// credits: A lot from this file is copied from https://unpkg.com/three@0.124.0/examples/jsm/webxr/ARButton.js
 import { WebGLRenderer, XRSession, XRSessionInit } from "three";
 
 interface XRSessionInitWithDom extends XRSessionInit {
@@ -11,49 +12,15 @@ export default class ARButton {
     renderer: WebGLRenderer,
     sessionInit: XRSessionInitWithDom
   ): HTMLElement {
-	const button = document.createElement("button");
-	
-	
+    const button = document.createElement("button");
+
+    // Workaround, because Typescript doesnt know the latest features yet..
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let myNav: any;
     // eslint-disable-next-line prefer-const
     myNav = navigator;
 
     function showStartAR(/*device*/) {
-      if (sessionInit.domOverlay === undefined) {
-        const overlay = document.createElement("div");
-        overlay.style.display = "none";
-        document.body.appendChild(overlay);
-
-        const svg = document.createElementNS(
-          "http://www.w3.org/2000/svg",
-          "svg"
-        );
-        svg.setAttribute("width", "38");
-        svg.setAttribute("height", "38");
-        svg.style.position = "absolute";
-        svg.style.right = "20px";
-        svg.style.top = "20px";
-        svg.addEventListener("click", function () {
-          currentSession?.end();
-        });
-        overlay.appendChild(svg);
-
-        const path = document.createElementNS(
-          "http://www.w3.org/2000/svg",
-          "path"
-        );
-        path.setAttribute("d", "M 12,12 L 28,28 M 28,12 12,28");
-        path.setAttribute("stroke", "#fff");
-        path.setAttribute("stroke-width", "2");
-        svg.appendChild(path);
-
-        sessionInit.optionalFeatures = ["dom-overlay"];
-        sessionInit.domOverlay = { root: overlay };
-      }
-
-      //
-
       let currentSession: XRSession | null = null;
 
       function onSessionStarted(session: XRSession) {
@@ -127,7 +94,7 @@ export default class ARButton {
 
     function stylizeElement(element: HTMLButtonElement | HTMLAnchorElement) {
       element.style.position = "absolute";
-      element.style.bottom = "20px";
+      element.style.bottom = "200px";
       element.style.padding = "12px 6px";
       element.style.border = "1px solid #fff";
       element.style.borderRadius = "4px";
