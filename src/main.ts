@@ -42,9 +42,7 @@ let hitTestSource: XRHitTestSource | null = null;
 let hitTestSourceRequested = false;
 
 // GAME-MODE Buttons
-const setupButton = <HTMLButtonElement>(
-  document.getElementById("setup")
-);
+const setupButton = <HTMLButtonElement>document.getElementById("setup");
 
 // SETUP Buttons
 const placeButton = <HTMLButtonElement>document.getElementById("place");
@@ -131,7 +129,6 @@ function init() {
   //
   scene.add(chessBoard.getBoardObject());
 
-  
   setupButton?.addEventListener("click", () => {
     toogleMenu();
   });
@@ -202,10 +199,10 @@ function handlePlay() {
     if (intersects.length > 0) {
       console.log("found field to move to");
       console.log(intersects[0].object.position);
-      chessBoard.moveSelectedPiece({
-        x: intersects[0].object.position.x,
-        y: intersects[0].object.position.z,
-      });
+      chessBoard.moveSelectedPieceTo(
+        intersects[0].object.position.x,
+        intersects[0].object.position.z
+      );
       chessBoard.unSelectPiece();
     }
   } else {
@@ -304,17 +301,17 @@ let toogleMenu = () => {
   if (gameMode === GameMode.Setup) {
     gameMode = GameMode.Play;
     setupButton.classList.remove("btnpressed");
-    if(setupHelptext && setupMenu) {
+    if (setupHelptext && setupMenu) {
       setupHelptext.style.visibility = "hidden";
       setupMenu.style.visibility = "hidden";
       console.log("trying to hide");
     }
   } else {
     gameMode = GameMode.Setup;
-    if(setupHelptext && setupMenu) {
+    if (setupHelptext && setupMenu) {
       setupHelptext.style.visibility = "visible";
       setupMenu.style.visibility = "visible";
     }
     setupButton.classList.add("btnpressed");
   }
-}
+};
