@@ -5,19 +5,10 @@ import {
   Mesh,
   MeshStandardMaterial,
   Object3D,
-  Quaternion,
-  Vector3,
 } from "three";
 import { ChessPiece } from "./ChessPiece";
 import { Chess } from "chessops/chess";
-import { SquareSet } from "chessops/squareSet";
-import {
-  Board,
-  Color as PlayingColor,
-  parseSquare,
-  Role,
-  Square,
-} from "chessops";
+import { Color as PlayingColor, Role, Square } from "chessops";
 
 type ChessBoardField = {
   object3D: Object3D;
@@ -53,7 +44,7 @@ class PieceMap {
     color: PlayingColor,
     position: Position
   ): ChessPiece {
-    let piece = this.chessPieces.find(
+    const piece = this.chessPieces.find(
       (chessPiece) =>
         chessPiece.getRole() === role &&
         chessPiece.getColor() === color &&
@@ -62,7 +53,7 @@ class PieceMap {
     if (piece) {
       return piece;
     } else {
-      let newPiece = new ChessPiece(color, role, position);
+      const newPiece = new ChessPiece(color, role, position);
       newPiece.getObject3D().then((object3D) => {
         //console.log("adding object to board");
         this.chessBoardObject3D.add(object3D);
@@ -96,11 +87,11 @@ export class ChessBoard {
   }
 
   getAllVisiblePieceObjects(): Object3D[] {
-    let visiblePieces: Object3D[] = [];
+    const visiblePieces: Object3D[] = [];
     //console.log("looking for pieces");
-    let loadedPieceObject3Ds = this.pieceMap.getPieces();
+    const loadedPieceObject3Ds = this.pieceMap.getPieces();
     for (let i = 0; i < loadedPieceObject3Ds.length; i++) {
-      let loadedPiece = loadedPieceObject3Ds[i].object3D;
+      const loadedPiece = loadedPieceObject3Ds[i].object3D;
       if (loadedPiece && loadedPiece.visible === true) {
         visiblePieces.push(loadedPiece);
       } else {
@@ -112,7 +103,7 @@ export class ChessBoard {
   }
 
   getAllFieldObjects(): Object3D[] {
-    let fieldObjects: Object3D[] = [];
+    const fieldObjects: Object3D[] = [];
     this.chessBoardFields.forEach((field) => {
       fieldObjects.push(field.object3D);
     });
@@ -123,12 +114,11 @@ export class ChessBoard {
     return this.chessBoardObject3D;
   }
 
-
   private highlightMoveOptions(square: Square) {
     console.log("getting move options");
-    for (let option of this.chessOps.dests(square)) {
+    for (const option of this.chessOps.dests(square)) {
       console.log(option);
-      let field = this.chessBoardFields.get(option);
+      const field = this.chessBoardFields.get(option);
       if (field) {
         console.log("found field, marking as option");
         field.isOption = true;
@@ -139,29 +129,9 @@ export class ChessBoard {
     this.updateFields();
   }
 
-  removeMoveOptions() {
+  private removeMoveOptions(): void {
     this.chessBoardFields.forEach((field) => (field.isOption = false));
     this.updateFields();
-  }
-
-  private squareSetToFieldArray(squareSet: SquareSet) {
-    console.log(this.chessOps.board.get(8 * 0 + 3)); // white queen
-    console.log(this.chessOps.board.get(8 * 7 + 4)); // black king
-
-    console.log("Dests black king");
-    console.log(this.chessOps.dests(8 * 7 + 4));
-    console.log("Dests white queen pawn");
-    console.log(this.chessOps.dests(8 * 1 + 3));
-    for (let square of this.chessOps.dests(8 * 1 + 3).reversed()) {
-      console.log((square >> 3) + " x " + (square & 7));
-    }
-
-    /*
-    square = 8*rank + file;
-    square = (rank << 3) + file;
-    rank = square >> 3; // div 8
-    file = square  & 7; // modulo 8
-    */
   }
 
   private squareToRank(square: Square) {
@@ -176,11 +146,11 @@ export class ChessBoard {
     return 8 * position.rank + position.file;
   }
 
-  selectPiece(pieceObject: Object3D) {
+  selectPiece(pieceObject: Object3D): void {
     console.log("Selecting piece");
 
-    let square: Square = 8 * pieceObject.position.z + pieceObject.position.x;
-    let piece = this.chessBoardFields.get(square)?.placedPiece;
+    const square: Square = 8 * pieceObject.position.z + pieceObject.position.x;
+    const piece = this.chessBoardFields.get(square)?.placedPiece;
     if (piece) {
       piece.select();
       this.selectedPiece = piece;
@@ -191,7 +161,7 @@ export class ChessBoard {
     console.log("Piece selected");
   }
 
-  unSelectPiece() {
+  unSelectPiece(): void {
     this.selectedPiece?.unSelect();
     this.selectedPiece = undefined;
   }
@@ -208,31 +178,33 @@ export class ChessBoard {
     }
   }
 
-  rotateY(angle: number = 10) {
+  rotateY(angle = 10): void {
     this.chessBoardObject3D.rotateY(angle);
   }
 
-  grow() {
+  grow(): void {
     this.chessBoardObject3D.scale.x *= 1.1;
     this.chessBoardObject3D.scale.y *= 1.1;
     this.chessBoardObject3D.scale.z *= 1.1;
   }
 
-  shrink() {
+  shrink(): void {
     this.chessBoardObject3D.scale.x *= 0.9;
     this.chessBoardObject3D.scale.y *= 0.9;
     this.chessBoardObject3D.scale.z *= 0.9;
   }
 
-  place(matrix4: Matrix4) {
+  place(matrix4: Matrix4): void {
     this.chessBoardObject3D.position.setFromMatrixPosition(matrix4);
     this.chessBoardObject3D.visible = true;
   }
 
-  moveSelectedPieceTo(position: Position) {
+  moveSelectedPieceTo(position: Position): void {
     if (this.selectedPiece) {
-      let oldPosition = this.positionToSquare(this.selectedPiece.getPosition());
-      let newPosition = this.positionToSquare(position);
+      const oldPosition = this.positionToSquare(
+        this.selectedPiece.getPosition()
+      );
+      const newPosition = this.positionToSquare(position);
 
       if (oldPosition) {
         this.chessOps.play({ from: oldPosition, to: newPosition });
@@ -255,9 +227,9 @@ export class ChessBoard {
   private readBoardAndPositionPieces() {
     this.pieceMap.reset();
     this.chessBoardFields.forEach((field, key) => {
-      let coPiece = this.chessOps.board.get(key);
+      const coPiece = this.chessOps.board.get(key);
       if (coPiece?.role && coPiece.color) {
-        let arPiece = this.pieceMap.setUnpositioned(
+        const arPiece = this.pieceMap.setUnpositioned(
           coPiece?.role,
           coPiece?.color,
           {
@@ -287,7 +259,7 @@ export class ChessBoard {
   private generateFields() {
     for (let x = 0; x < 8; x++) {
       for (let y = 0; y < 8; y++) {
-        let square: Square = 8 * y + x;
+        const square: Square = 8 * y + x;
         let material;
         if ((x + y) % 2 === 1) {
           material = this.fieldDarkMaterial;

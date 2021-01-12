@@ -4,11 +4,10 @@ import {
   Mesh,
   MeshStandardMaterial,
   Object3D,
-  Vector3,
 } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { Position } from "./ChessBoard";
-import { Color as PlayingColor, Role, Square } from "chessops";
+import { Color as PlayingColor, Role } from "chessops";
 
 type MaterialDefinition = {
   playingColor: PlayingColor;
@@ -91,7 +90,7 @@ export class ChessPiece {
     this.playingColor = playingColor;
     this.role = role;
     this.position = position;
-    let modelDefinition = modelDefinitions.find(
+    const modelDefinition = modelDefinitions.find(
       (element) => element.role === role
     );
     if (modelDefinition) {
@@ -135,7 +134,7 @@ export class ChessPiece {
     return this.position;
   }
 
-  setPosition(position: Position) {
+  setPosition(position: Position):void {
     this.getObject3D().then((object3D) => {
       if (position) {
         object3D.position.set(position.file, 0, position.rank);
@@ -148,18 +147,16 @@ export class ChessPiece {
     });
   }
 
-  select() {
+  select() :void {
     if (this.object3D) {
-      let object = this.object3D;
       this.applyMaterial(true);
     } else {
       throw new Error("3D Object not loaded.");
     }
   }
 
-  unSelect() {
+  unSelect():void {
     if (this.object3D) {
-      let object = this.object3D;
       this.applyMaterial(false);
     } else {
       throw new Error("3D Object not loaded.");
@@ -167,7 +164,7 @@ export class ChessPiece {
   }
 
   private applyMaterial(selected: boolean) {
-    let materialDefinition = materialDefinitions.find(
+    const materialDefinition = materialDefinitions.find(
       (materialdef) =>
         materialdef.playingColor === this.playingColor &&
         materialdef.selected === selected

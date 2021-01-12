@@ -12,9 +12,9 @@ import {
   Raycaster,
   Vector3,
   Camera,
-  Quaternion,
   AxesHelper,
   Group,
+  XRFrame,
 } from "three";
 
 import ARButton from "./ARButton";
@@ -32,8 +32,8 @@ let gameMode: GameMode = GameMode.None;
 let container;
 let camera: PerspectiveCamera, scene: Scene, renderer: WebGLRenderer;
 
-let cameraWorldPosition = new Vector3();
-let cameraWorldQuaternion = new Quaternion();
+const cameraWorldPosition = new Vector3();
+//const cameraWorldQuaternion = new Quaternion();
 
 let reticle: Object3D;
 const chessBoard = new ChessBoard();
@@ -79,8 +79,7 @@ function init() {
   scene.onBeforeRender = (
     renderer: WebGLRenderer,
     scene: Scene,
-    camera: Camera,
-    rendertarget: any
+    camera: Camera
   ) => {
     cameraWorldPosition.setFromMatrixPosition(camera.matrixWorld);
   };
@@ -148,8 +147,8 @@ function init() {
     chessBoard.shrink();
   });
 
-  let ring = new RingBufferGeometry(0.045, 0.05, 32).rotateX(-Math.PI / 2);
-  let dot = new CircleBufferGeometry(0.005, 32).rotateX(-Math.PI / 2);
+  const ring = new RingBufferGeometry(0.045, 0.05, 32).rotateX(-Math.PI / 2);
+  const dot = new CircleBufferGeometry(0.005, 32).rotateX(-Math.PI / 2);
   reticle = new Mesh(
     BufferGeometryUtils.mergeBufferGeometries([ring, dot]),
     new MeshBasicMaterial()
@@ -242,11 +241,11 @@ function handlePlay() {
   }
 }
 
-let origin: Vector3 = new Vector3();
-let direction: Vector3 = new Vector3();
+const origin: Vector3 = new Vector3();
+const direction: Vector3 = new Vector3();
 //let hexColors = [0x483D8B, 0xcd0000, 0x227744, 0x000000, 0xFFFFFF];
 
-function render(timestamp: any, frame: any) {
+function render(timestamp: number, frame: XRFrame | undefined) {
   if (frame) {
     if (gameMode === GameMode.None) {
       toogleMenu();
@@ -276,12 +275,14 @@ function render(timestamp: any, frame: any) {
         const hitTestResults = frame.getHitTestResults(hitTestSource);
 
         if (hitTestResults.length) {
-          const hit = hitTestResults[0];
-
           reticle.visible = true;
-          reticle.matrix.fromArray(
-            hit.getPose(referenceSpace).transform.matrix
-          );
+          const hit = hitTestResults[0];
+          if (hit && referenceSpace) {
+            const refPose = hit.getPose(referenceSpace)?.transform.matrix;
+            if(refPose) {
+              reticle.matrix.fromArray(refPose);
+            }
+          }
         } else {
           reticle.visible = false;
         }
@@ -297,7 +298,7 @@ function render(timestamp: any, frame: any) {
   renderer.render(scene, camera);
 }
 
-let toogleMenu = () => {
+const toogleMenu = () => {
   if (gameMode === GameMode.Setup) {
     gameMode = GameMode.Play;
     setupButton.classList.remove("btnpressed");
