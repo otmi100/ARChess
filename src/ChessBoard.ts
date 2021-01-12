@@ -28,7 +28,6 @@ type ChessBoardField = {
 export type Position = {
   rank: number;
   file: number;
-  square: Square | null;
 };
 
 class PieceMap {
@@ -45,7 +44,7 @@ class PieceMap {
 
   reset() {
     this.chessPieces.forEach((piece) =>
-      piece.setPosition({ file: 0, rank: 0, square: null })
+      piece.setPosition({ file: 0, rank: 0 })
     );
   }
 
@@ -123,31 +122,9 @@ export class ChessBoard {
   getBoardObject(): Group {
     return this.chessBoardObject3D;
   }
-  getFieldPosition(position: Position): Vector3 {
-    let chessBoardField = this.chessBoardFields.get(
-      this.fileRankToSquare(position.file, position.rank)
-    );
-    if (chessBoardField) {
-      return chessBoardField.object3D.position;
-    } else {
-      throw Error("Field not found on position " + position);
-    }
-    //return this.chessBoardFields[position.x][position.y].field.position;
-  }
 
-  placePieceOnField(piece: ChessPiece, position: Position) {
-    /*
-    if (this.chessBoardFields[position.x][position.y].placedPiece != null) {
-      console.log("Da steht schon einer..");
-      this.chessBoardFields[position.x][position.y].placedPiece?.setPosition(
-        null
-      );
-    }
-    this.chessBoardFields[position.x][position.y].placedPiece = piece;
-    piece.setPosition(position);*/
-  }
 
-  highlightMoveOptions(square: Square) {
+  private highlightMoveOptions(square: Square) {
     console.log("getting move options");
     for (let option of this.chessOps.dests(square)) {
       console.log(option);
@@ -195,8 +172,8 @@ export class ChessBoard {
     return square & 7; // modulo 8
   }
 
-  private fileRankToSquare(file: number, rank: number): Square {
-    return 8 * rank + file;
+  private positionToSquare(position: Position): Square {
+    return 8 * position.rank + position.file;
   }
 
   selectPiece(pieceObject: Object3D) {
@@ -252,17 +229,16 @@ export class ChessBoard {
     this.chessBoardObject3D.visible = true;
   }
 
-  moveSelectedPieceTo(file: number, rank: number) {
+  moveSelectedPieceTo(position: Position) {
     if (this.selectedPiece) {
-      let oldPosition = this.selectedPiece.getPosition().square;
-      let newPosition = this.fileRankToSquare(file, rank);
+      let oldPosition = this.positionToSquare(this.selectedPiece.getPosition());
+      let newPosition = this.positionToSquare(position);
 
       if (oldPosition) {
         this.chessOps.play({ from: oldPosition, to: newPosition });
         this.selectedPiece.setPosition({
-          square: newPosition,
-          file: file,
-          rank: rank,
+          file: position.file,
+          rank: position.rank,
         });
       } else {
         throw Error("old position for move not found");
@@ -285,7 +261,6 @@ export class ChessBoard {
           coPiece?.role,
           coPiece?.color,
           {
-            square: key,
             file: this.squareToFile(key),
             rank: this.squareToRank(key),
           }
@@ -293,24 +268,6 @@ export class ChessBoard {
         field.placedPiece = arPiece;
       }
     });
-    /*
-    this.pieces = this.getAllStartingPieces();
-    this.pieces.forEach((piece: ChessPiece) => {
-      piece.getObject3D().then((object) => {
-        //console.log(object);
-        let position = piece.getPosition();
-        if (position) {
-          object.position.copy(this.getFieldPosition(position));
-          let field = this.chessBoardFields.get(8*position.y +position.x);
-          if(field) {
-            //placedPiece = field.placedPiece;
-          }
-        }
-        object.scale.set(0.25, 0.25, 0.25);
-        this.chessBoardObject.add(object);
-        this.loadedPieceObjects.push(object);
-      });
-    });*/
   }
 
   private fieldGeometry = new BoxGeometry(1, 0.01, 1);

@@ -199,10 +199,10 @@ function handlePlay() {
     if (intersects.length > 0) {
       console.log("found field to move to");
       console.log(intersects[0].object.position);
-      chessBoard.moveSelectedPieceTo(
-        intersects[0].object.position.x,
-        intersects[0].object.position.z
-      );
+      chessBoard.moveSelectedPieceTo({
+        file: intersects[0].object.position.x,
+        rank: intersects[0].object.position.z,
+      });
       chessBoard.unSelectPiece();
     }
   } else {
