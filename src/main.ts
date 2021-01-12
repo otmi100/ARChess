@@ -115,15 +115,20 @@ function init() {
   scene.add(controller);
 
   //
-  document.body.appendChild(
-    ARButton.createButton(renderer, {
-      requiredFeatures: ["hit-test"],
-      optionalFeatures: ["dom-overlay"],
-      domOverlay: {
-        root: document.getElementById("overlay"),
-      },
-    })
-  );
+  const overlayElement = document.getElementById("overlay");
+  if (overlayElement) {
+    document.body.appendChild(
+      ARButton.createButton(renderer, {
+        requiredFeatures: ["hit-test"],
+        optionalFeatures: ["dom-overlay"],
+        domOverlay: {
+          root: overlayElement,
+        },
+      })
+    );
+  } else {
+    throw new Error("Overlay DOM Element not found.");
+  }
 
   //
   scene.add(chessBoard.getBoardObject());
@@ -279,7 +284,7 @@ function render(timestamp: number, frame: XRFrame | undefined) {
           const hit = hitTestResults[0];
           if (hit && referenceSpace) {
             const refPose = hit.getPose(referenceSpace)?.transform.matrix;
-            if(refPose) {
+            if (refPose) {
               reticle.matrix.fromArray(refPose);
             }
           }
