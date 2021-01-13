@@ -83,6 +83,7 @@ export class ChessPiece {
   private position: Position;
   private modelFile: string;
   private role: Role;
+  private updatedAfterMove = true;
 
   static loader = new GLTFLoader();
 
@@ -118,7 +119,7 @@ export class ChessPiece {
           if (model) {
             this.object3D = model;
             this.applyMaterial(false);
-            this.object3D.position.set(this.position.file, 0, this.position.rank);
+            this.object3D.position.set(this.position.file, 0, -this.position.rank);
             resolve(this.object3D);
           } else {
             reject("could not find model " + this.modelFile);
@@ -137,7 +138,7 @@ export class ChessPiece {
   setPosition(position: Position):void {
     this.getObject3D().then((object3D) => {
       if (position) {
-        object3D.position.set(position.file, 0, position.rank);
+        object3D.position.set(position.file, 0, -position.rank);
         object3D.visible = true;
         console.log(object3D);
       } else {
@@ -196,5 +197,14 @@ export class ChessPiece {
         }
       );
     });
+  }
+
+
+  public getUpdatedAfterMove() : boolean {
+    return this.updatedAfterMove;
+  }
+
+  public setUpdatedAfterMove(updatedAfterMove: boolean) : void {
+    this.updatedAfterMove =  updatedAfterMove;
   }
 }

@@ -8,7 +8,8 @@ import {
 } from "three";
 import { ChessPiece } from "./ChessPiece";
 import { Chess } from "chessops/chess";
-import { Color as PlayingColor, Role, Square } from "chessops";
+import { board as debugBoard } from 'chessops/debug';
+import { Color as PlayingColor, Move, Role, Square } from "chessops";
 
 type ChessBoardField = {
   object3D: Object3D;
@@ -34,12 +35,19 @@ class PieceMap {
   }
 
   reset() {
-    this.chessPieces.forEach((piece) =>
-      piece.setPosition({ file: 0, rank: 0 })
-    );
+    this.chessPieces.forEach((piece) => piece.setUpdatedAfterMove(false));
   }
 
-  setUnpositioned(
+  hideUnpositioned() {
+    this.chessPieces.forEach((piece) => {
+      if (!piece.getUpdatedAfterMove() && piece.object3D) {
+        console.log("making piece invisible, because it is not on board anymore");
+        piece.object3D.visible = false;
+      }
+    });
+  }
+
+  getUnpositionedOrNewPiece(
     role: Role,
     color: PlayingColor,
     position: Position
@@ -48,9 +56,10 @@ class PieceMap {
       (chessPiece) =>
         chessPiece.getRole() === role &&
         chessPiece.getColor() === color &&
-        chessPiece.getPosition() === undefined
+        !chessPiece.getUpdatedAfterMove()
     );
     if (piece) {
+      piece.setPosition(position);
       return piece;
     } else {
       const newPiece = new ChessPiece(color, role, position);
@@ -114,43 +123,12 @@ export class ChessBoard {
     return this.chessBoardObject3D;
   }
 
-  private highlightMoveOptions(square: Square) {
-    console.log("getting move options");
-    for (const option of this.chessOps.dests(square)) {
-      console.log(option);
-      const field = this.chessBoardFields.get(option);
-      if (field) {
-        console.log("found field, marking as option");
-        field.isOption = true;
-        console.log(field);
-      }
-      //console.log((square >> 3) + " x " + (square & 7));
-    }
-    this.updateFields();
-  }
-
-  private removeMoveOptions(): void {
-    this.chessBoardFields.forEach((field) => (field.isOption = false));
-    this.updateFields();
-  }
-
-  private squareToRank(square: Square) {
-    return square >> 3; // div 8
-  }
-
-  private squareToFile(square: Square) {
-    return square & 7; // modulo 8
-  }
-
-  private positionToSquare(position: Position): Square {
-    return 8 * position.rank + position.file;
-  }
-
   selectPiece(pieceObject: Object3D): void {
     console.log("Selecting piece");
-
-    const square: Square = 8 * pieceObject.position.z + pieceObject.position.x;
+    const square: Square = this.positionToSquare({file: pieceObject.position.x, rank: Math.abs(pieceObject.position.z)})
+    console.log(this.squareToPosition(square));
     const piece = this.chessBoardFields.get(square)?.placedPiece;
+    console.log(piece);
     if (piece) {
       piece.select();
       this.selectedPiece = piece;
@@ -164,6 +142,7 @@ export class ChessBoard {
   unSelectPiece(): void {
     this.selectedPiece?.unSelect();
     this.selectedPiece = undefined;
+    this.removeMoveOptions();
   }
 
   getSelectedPiece(): Object3D | undefined {
@@ -178,7 +157,7 @@ export class ChessBoard {
     }
   }
 
-  rotateY(angle = 10): void {
+  rotateY(angle = 4): void {
     this.chessBoardObject3D.rotateY(angle);
   }
 
@@ -194,12 +173,12 @@ export class ChessBoard {
     this.chessBoardObject3D.scale.z *= 0.9;
   }
 
-  place(matrix4: Matrix4): void {
+  positionBoard(matrix4: Matrix4): void {
     this.chessBoardObject3D.position.setFromMatrixPosition(matrix4);
     this.chessBoardObject3D.visible = true;
   }
 
-  moveSelectedPieceTo(position: Position): void {
+  moveSelectedPieceTo(position: Position): string | undefined {
     if (this.selectedPiece) {
       const oldPosition = this.positionToSquare(
         this.selectedPiece.getPosition()
@@ -207,21 +186,70 @@ export class ChessBoard {
       const newPosition = this.positionToSquare(position);
 
       if (oldPosition) {
-        this.chessOps.play({ from: oldPosition, to: newPosition });
-        this.selectedPiece.setPosition({
-          file: position.file,
-          rank: position.rank,
-        });
+        const move: Move = { from: oldPosition, to: newPosition };
+        console.debug("Trying to move. This is the Chessboard before the move.");
+        console.debug(debugBoard(this.chessOps.board))
+        console.debug("Trying to move:");
+        console.debug(move);
+        if (this.chessOps.isLegal(move)) {
+          this.chessOps.play(move);
+          console.debug("Chess Board after move:");
+          console.debug(debugBoard(this.chessOps.board));
+          this.selectedPiece.setPosition({
+            file: position.file,
+            rank: position.rank,
+          });
+          this.selectedPiece.unSelect();
+          this.removeMoveOptions();
+          this.readBoardAndPositionPieces();
+          if (this.chessOps.isCheckmate()) {
+            console.log(this.chessOps.outcome()?.winner + "WON!");
+            return (this.chessOps.outcome()?.winner + " WON this match!")
+          } else if (this.chessOps.isStalemate()) {
+            console.log("STALEMATE!");
+            return ("STALEMATE!")
+          } else if (this.chessOps.isCheck()) {
+            console.log("CHECK!");
+            return "CHECK!";
+          } else {
+            return undefined;
+          }
+        } else {
+          console.log("Not a legal move!");
+        }
       } else {
         throw Error("old position for move not found");
       }
-
-      this.selectedPiece.unSelect();
-      this.removeMoveOptions();
-      this.readBoardAndPositionPieces();
     } else {
       throw new Error("No piece selected. Cannot move..");
     }
+  }
+
+  private highlightMoveOptions(square: Square) {
+    console.log("getting move options");
+    for (const option of this.chessOps.dests(square)) {
+      console.log(this.squareToPosition(option));
+      const field = this.chessBoardFields.get(option);
+      if (field) {
+        console.log("found field, marking as option");
+        field.isOption = true;
+        console.log(field);
+      }
+    }
+    this.updateFields();
+  }
+
+  private removeMoveOptions(): void {
+    this.chessBoardFields.forEach((field) => (field.isOption = false));
+    this.updateFields();
+  }
+
+  private squareToPosition(square: Square) : Position {
+    return {rank: square >> 3, file: square & 7}
+  }
+
+  private positionToSquare(position: Position): Square {
+    return 8 * position.rank + position.file;
   }
 
   private readBoardAndPositionPieces() {
@@ -229,17 +257,16 @@ export class ChessBoard {
     this.chessBoardFields.forEach((field, key) => {
       const coPiece = this.chessOps.board.get(key);
       if (coPiece?.role && coPiece.color) {
-        const arPiece = this.pieceMap.setUnpositioned(
+        const arPiece = this.pieceMap.getUnpositionedOrNewPiece(
           coPiece?.role,
           coPiece?.color,
-          {
-            file: this.squareToFile(key),
-            rank: this.squareToRank(key),
-          }
+          this.squareToPosition(key)
         );
+        arPiece.setUpdatedAfterMove(true);
         field.placedPiece = arPiece;
       }
     });
+    this.pieceMap.hideUnpositioned();
   }
 
   private fieldGeometry = new BoxGeometry(1, 0.01, 1);
@@ -257,18 +284,18 @@ export class ChessBoard {
   });
 
   private generateFields() {
-    for (let x = 0; x < 8; x++) {
-      for (let y = 0; y < 8; y++) {
-        const square: Square = 8 * y + x;
+    for (let file = 0; file < 8; file++) {
+      for (let rank = 0; rank < 8; rank++) {
+        const square: Square = this.positionToSquare({file: file, rank: rank});
         let material;
-        if ((x + y) % 2 === 1) {
+        if ((rank + file) % 2 === 1) {
           material = this.fieldDarkMaterial;
         } else {
           material = this.fieldLightMaterial;
         }
         const cube = new Mesh(this.fieldGeometry, material);
         this.chessBoardObject3D.add(cube);
-        cube.position.set(x, 0, y);
+        cube.position.set(file, 0, -rank);
         this.chessBoardFields.set(square, {
           object3D: cube,
           placedPiece: null,
@@ -278,13 +305,13 @@ export class ChessBoard {
   }
 
   private updateFields() {
-    console.log("updading all fields");
+    console.log("updateing all fields");
     this.chessBoardFields.forEach((field, key) => {
       let material;
       if (field.isOption) {
         console.log(field);
         material = this.fieldOptionMaterial;
-      } else if ((this.squareToFile(key) + this.squareToRank(key)) % 2 === 1) {
+      } else if ((this.squareToPosition(key).file + this.squareToPosition(key).rank) % 2 === 1) {
         material = this.fieldDarkMaterial;
       } else {
         material = this.fieldLightMaterial;

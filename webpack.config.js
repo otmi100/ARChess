@@ -29,6 +29,7 @@ module.exports = {
   ],
   devServer: {
     contentBase: path.join(__dirname, "dist"),
+    clientLogLevel: 'debug',
     compress: true,
     host: '0.0.0.0',
     http2: true,

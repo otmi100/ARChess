@@ -52,7 +52,7 @@ const rotateChessboardButton = <HTMLButtonElement>(
 const growButton = <HTMLButtonElement>document.getElementById("grow");
 const shrinkButton = <HTMLButtonElement>document.getElementById("shrink");
 
-const setupHelptext = document.getElementById("setupHelptext");
+const notificationText = document.getElementById("notificationText");
 const setupMenu = document.getElementById("setup-menu");
 
 const cursor = new Vector3();
@@ -139,7 +139,11 @@ function init() {
   placeButton?.addEventListener("click", () => {
     if (reticle.visible) {
       console.log("trying to place chessboard");
-      chessBoard.place(reticle.matrix);
+      if (notificationText) {
+        notificationText.innerText =
+          "Use Buttons to relocate, grow, shrink or rotate Chessboard. When finished locating, deactivate Setup-Mode to start playing.";
+      }
+      chessBoard.positionBoard(reticle.matrix);
     }
   });
   rotateChessboardButton?.addEventListener("click", () => {
@@ -190,23 +194,40 @@ function handlePlay() {
   //console.log("raycast from camera"), console.log(cameraWorldPosition);
   //console.log("raycast to cursor"), console.log(cursor);
   raycaster.set(origin, direction);
-
-  if (chessBoard.getSelectedPiece()) {
+  const selectedPiece = chessBoard.getSelectedPiece();
+  if (selectedPiece) {
     // move a piece
     console.log(chessBoard.getSelectedPiece());
     console.log("choose where to move");
+
+    // interact with fields and selected piece
+    const interactiveObjects = chessBoard.getAllFieldObjects();
+    interactiveObjects.push(selectedPiece);
+
     const intersects = raycaster.intersectObjects(
       chessBoard.getAllFieldObjects(),
       true
     );
 
     if (intersects.length > 0) {
-      console.log("found field to move to");
-      console.log(intersects[0].object.position);
-      chessBoard.moveSelectedPieceTo({
-        file: intersects[0].object.position.x,
-        rank: intersects[0].object.position.z,
-      });
+      if (intersects[0].object !== selectedPiece) {
+        console.log("found field to move to");
+        console.log(intersects[0].object.position);
+        const result = chessBoard.moveSelectedPieceTo({
+          file: intersects[0].object.position.x,
+          rank: Math.abs(intersects[0].object.position.z),
+        });
+        if (result) {
+          if (notificationText) {
+            notificationText.innerText = result;
+            notificationText.style.visibility = "visible";
+          }
+        } else {
+          if (notificationText) {
+            notificationText.style.visibility = "hidden";
+          }
+        }
+      }
       chessBoard.unSelectPiece();
     }
   } else {
@@ -307,17 +328,21 @@ const toogleMenu = () => {
   if (gameMode === GameMode.Setup) {
     gameMode = GameMode.Play;
     setupButton.classList.remove("btnpressed");
-    if (setupHelptext && setupMenu) {
-      setupHelptext.style.visibility = "hidden";
+    if (notificationText && setupMenu) {
+      notificationText.innerText = "";
+      notificationText.style.visibility = "hidden";
       setupMenu.style.visibility = "hidden";
       console.log("trying to hide");
     }
   } else {
     gameMode = GameMode.Setup;
-    if (setupHelptext && setupMenu) {
-      setupHelptext.style.visibility = "visible";
+    if (notificationText && setupMenu) {
+      notificationText.innerText =
+        'Move the camera slowly around until you see a white circle. Hit "place" to place Chessboard.';
+      notificationText.style.visibility = "visible";
       setupMenu.style.visibility = "visible";
     }
     setupButton.classList.add("btnpressed");
   }
+  setupButton.style.visibility = "visible";
 };
