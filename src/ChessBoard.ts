@@ -123,20 +123,23 @@ export class ChessBoard {
     return this.chessBoardObject3D;
   }
 
-  selectPiece(pieceObject: Object3D): void {
+  selectPiece(pieceObject: Object3D): string | undefined {
     console.log("Selecting piece");
     const square: Square = this.positionToSquare({file: pieceObject.position.x, rank: Math.abs(pieceObject.position.z)})
     console.log(this.squareToPosition(square));
     const piece = this.chessBoardFields.get(square)?.placedPiece;
     console.log(piece);
     if (piece) {
-      piece.select();
-      this.selectedPiece = piece;
-      this.highlightMoveOptions(square);
+      if (this.chessOps.turn !== piece.getColor()) {
+        return "It's " + this.chessOps.turn + "'s turn.";
+      } else {
+        piece.select();
+        this.selectedPiece = piece;
+        this.highlightMoveOptions(square);
+      }
     } else {
       throw new Error("Piece not found on this field.");
     }
-    console.log("Piece selected");
   }
 
   unSelectPiece(): void {
@@ -157,8 +160,8 @@ export class ChessBoard {
     }
   }
 
-  rotateY(angle = 4): void {
-    this.chessBoardObject3D.rotateY(angle);
+  rotateY(radiant = 0.1): void {
+    this.chessBoardObject3D.rotateY(radiant);
   }
 
   grow(): void {
@@ -173,7 +176,7 @@ export class ChessBoard {
     this.chessBoardObject3D.scale.z *= 0.9;
   }
 
-  positionBoard(matrix4: Matrix4): void {
+  setBoardPosition(matrix4: Matrix4): void {
     this.chessBoardObject3D.position.setFromMatrixPosition(matrix4);
     this.chessBoardObject3D.visible = true;
   }

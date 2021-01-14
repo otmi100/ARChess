@@ -1,10 +1,4 @@
-import {
-  Color,
-  Material,
-  Mesh,
-  MeshStandardMaterial,
-  Object3D,
-} from "three";
+import { Color, Material, Mesh, MeshStandardMaterial, Object3D } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { Position } from "./ChessBoard";
 import { Color as PlayingColor, Role } from "chessops";
@@ -119,7 +113,14 @@ export class ChessPiece {
           if (model) {
             this.object3D = model;
             this.applyMaterial(false);
-            this.object3D.position.set(this.position.file, 0, -this.position.rank);
+            if (this.getColor() === "white") {
+              this.object3D.rotateY(3.1416);
+            }
+            this.object3D.position.set(
+              this.position.file,
+              0,
+              -this.position.rank
+            );
             resolve(this.object3D);
           } else {
             reject("could not find model " + this.modelFile);
@@ -135,7 +136,7 @@ export class ChessPiece {
     return this.position;
   }
 
-  setPosition(position: Position):void {
+  setPosition(position: Position): void {
     this.getObject3D().then((object3D) => {
       if (position) {
         object3D.position.set(position.file, 0, -position.rank);
@@ -148,7 +149,7 @@ export class ChessPiece {
     });
   }
 
-  select() :void {
+  select(): void {
     if (this.object3D) {
       this.applyMaterial(true);
     } else {
@@ -156,7 +157,7 @@ export class ChessPiece {
     }
   }
 
-  unSelect():void {
+  unSelect(): void {
     if (this.object3D) {
       this.applyMaterial(false);
     } else {
@@ -199,12 +200,11 @@ export class ChessPiece {
     });
   }
 
-
-  public getUpdatedAfterMove() : boolean {
+  public getUpdatedAfterMove(): boolean {
     return this.updatedAfterMove;
   }
 
-  public setUpdatedAfterMove(updatedAfterMove: boolean) : void {
-    this.updatedAfterMove =  updatedAfterMove;
+  public setUpdatedAfterMove(updatedAfterMove: boolean): void {
+    this.updatedAfterMove = updatedAfterMove;
   }
 }

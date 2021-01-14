@@ -7,12 +7,10 @@ import {
   Mesh,
   RingBufferGeometry,
   MeshBasicMaterial,
-  XRHitTestSource,
   CircleBufferGeometry,
   Raycaster,
   Vector3,
   Camera,
-  AxesHelper,
   Group,
   XRFrame,
 } from "three";
@@ -20,6 +18,7 @@ import {
 import ARButton from "./ARButton";
 import { BufferGeometryUtils } from "three/examples/jsm/utils/BufferGeometryUtils";
 import { ChessBoard } from "./ChessBoard";
+import HitTest from "./HitTest";
 
 enum GameMode {
   None,
@@ -31,15 +30,13 @@ let gameMode: GameMode = GameMode.None;
 
 let container;
 let camera: PerspectiveCamera, scene: Scene, renderer: WebGLRenderer;
+let hitTest: HitTest;
 
 const cameraWorldPosition = new Vector3();
 //const cameraWorldQuaternion = new Quaternion();
 
 let reticle: Object3D;
 const chessBoard = new ChessBoard();
-
-let hitTestSource: XRHitTestSource | null = null;
-let hitTestSourceRequested = false;
 
 // GAME-MODE Buttons
 const setupButton = <HTMLButtonElement>document.getElementById("setup");
@@ -88,8 +85,8 @@ function init() {
   light.position.set(0.5, 1, 0.25);
   scene.add(light);
 
-  const axesHelper = new AxesHelper(5);
-  scene.add(axesHelper);
+  //const axesHelper = new AxesHelper(5);
+  //scene.add(axesHelper);
 
   //
 
@@ -98,6 +95,8 @@ function init() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.xr.enabled = true;
   container.appendChild(renderer.domElement);
+
+  hitTest = new HitTest(renderer);
 
   controller = renderer.xr.getController(0);
   controller.addEventListener("select", () => {
@@ -141,9 +140,9 @@ function init() {
       console.log("trying to place chessboard");
       if (notificationText) {
         notificationText.innerText =
-          "Use Buttons to relocate, grow, shrink or rotate Chessboard. When finished locating, deactivate Setup-Mode to start playing.";
+          "Use Buttons to relocate, grow, shrink or rotate Chessboard. When finished locating, use top button to deactivate Setup-Mode and start playing.";
       }
-      chessBoard.positionBoard(reticle.matrix);
+      chessBoard.setBoardPosition(reticle.matrix);
     }
   });
   rotateChessboardButton?.addEventListener("click", () => {
@@ -183,6 +182,9 @@ function animate() {
   renderer.setAnimationLoop(render);
 }
 
+const origin: Vector3 = new Vector3();
+const direction: Vector3 = new Vector3();
+
 function handlePlay() {
   cursor.set(0, 0, 0).applyMatrix4(controller.matrixWorld);
   origin.set(
@@ -217,16 +219,7 @@ function handlePlay() {
           file: intersects[0].object.position.x,
           rank: Math.abs(intersects[0].object.position.z),
         });
-        if (result) {
-          if (notificationText) {
-            notificationText.innerText = result;
-            notificationText.style.visibility = "visible";
-          }
-        } else {
-          if (notificationText) {
-            notificationText.style.visibility = "hidden";
-          }
-        }
+        showResult(result);
       }
       chessBoard.unSelectPiece();
     }
@@ -261,15 +254,12 @@ function handlePlay() {
       if (chessPiece) {
         console.log("found chess piece to select");
         console.log(chessPiece.position);
-        chessBoard.selectPiece(chessPiece);
+        const result = chessBoard.selectPiece(chessPiece);
+        showResult(result);
       }
     }
   }
 }
-
-const origin: Vector3 = new Vector3();
-const direction: Vector3 = new Vector3();
-//let hexColors = [0x483D8B, 0xcd0000, 0x227744, 0x000000, 0xFFFFFF];
 
 function render(timestamp: number, frame: XRFrame | undefined) {
   if (frame) {
@@ -277,41 +267,12 @@ function render(timestamp: number, frame: XRFrame | undefined) {
       toogleMenu();
     }
     if (gameMode === GameMode.Setup) {
-      const referenceSpace = renderer.xr.getReferenceSpace();
-      const session = renderer.xr.getSession();
-
-      if (hitTestSourceRequested === false) {
-        session.requestReferenceSpace("viewer").then(function (referenceSpace) {
-          session
-            .requestHitTestSource({ space: referenceSpace })
-            .then(function (source) {
-              hitTestSource = source;
-            });
-        });
-
-        session.addEventListener("end", function () {
-          hitTestSourceRequested = false;
-          hitTestSource = null;
-        });
-
-        hitTestSourceRequested = true;
-      }
-
-      if (hitTestSource) {
-        const hitTestResults = frame.getHitTestResults(hitTestSource);
-
-        if (hitTestResults.length) {
-          reticle.visible = true;
-          const hit = hitTestResults[0];
-          if (hit && referenceSpace) {
-            const refPose = hit.getPose(referenceSpace)?.transform.matrix;
-            if (refPose) {
-              reticle.matrix.fromArray(refPose);
-            }
-          }
-        } else {
-          reticle.visible = false;
-        }
+      const refPose = hitTest.getRefPose(frame);
+      if (refPose) {
+        reticle.matrix.fromArray(refPose.transform.matrix);
+        reticle.visible = true;
+      } else {
+        reticle.visible = false;
       }
     } else if (gameMode === GameMode.Play) {
       reticle.visible = false;
@@ -345,4 +306,17 @@ const toogleMenu = () => {
     setupButton.classList.add("btnpressed");
   }
   setupButton.style.visibility = "visible";
+};
+
+const showResult = (result: string | undefined) => {
+  if (result) {
+    if (result && notificationText) {
+      notificationText.innerText = result;
+      notificationText.style.visibility = "visible";
+    }
+  } else {
+    if (notificationText) {
+      notificationText.style.visibility = "hidden";
+    }
+  }
 };
