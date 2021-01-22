@@ -50,7 +50,15 @@ const growButton = <HTMLButtonElement>document.getElementById("grow");
 const shrinkButton = <HTMLButtonElement>document.getElementById("shrink");
 
 const notificationText = document.getElementById("notificationText");
-const setupMenu = document.getElementById("setup-menu");
+const setupMenu = document.getElementById("setupMenu");
+
+const gameIdInput = <HTMLInputElement>document.getElementById("gameid");
+const startGameButton = <HTMLButtonElement>document.getElementById("startGame");
+const startDiv = document.getElementById("startDiv");
+
+
+// Game Overlay
+const overlayElement = document.getElementById("overlay");
 
 const cursor = new Vector3();
 const raycaster = new Raycaster();
@@ -114,16 +122,23 @@ function init() {
   scene.add(controller);
 
   //
-  const overlayElement = document.getElementById("overlay");
-  if (overlayElement) {
-    document.body.appendChild(
-      ARButton.createButton(renderer, {
+  if (startGameButton && overlayElement) {
+    new ARButton(
+      startGameButton,
+      () => {
+        if(gameIdInput) {
+          chessBoard.startGame(+gameIdInput.value);
+          console.log("start now!");
+        }
+      },
+      renderer,
+      {
         requiredFeatures: ["hit-test"],
         optionalFeatures: ["dom-overlay"],
         domOverlay: {
           root: overlayElement,
         },
-      })
+      }
     );
   } else {
     throw new Error("Overlay DOM Element not found.");
@@ -306,6 +321,11 @@ const toogleMenu = () => {
     setupButton.classList.add("btnpressed");
   }
   setupButton.style.visibility = "visible";
+  startGameButton.style.visibility = "hidden";
+  gameIdInput.style.visibility = "hidden";
+  if(startDiv) {
+    startDiv.style.visibility = "hidden";
+  }
 };
 
 const showResult = (result: string | undefined) => {

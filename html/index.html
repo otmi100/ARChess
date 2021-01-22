@@ -12,17 +12,27 @@
     </header>
     <script type="module" src="main-bundle.js"></script>
     <div id="overlay">
-      <div id="top-menu">
+      <div id="topMenu">
         <div><button id="setup">Setup Mode</button></div>
         <div id="notificationText"></div>
       </div>
-      
-      <div id="setup-menu">
+      <div id="startDiv">
+        <label for="fname">Game id:</label>
+        <input type="text" id="gameid" name="gameid" />
+        <button id="startGame">Start Game</button>
+      </div>
+
+      <div id="setupMenu">
         <button id="place">Place</button>
         <button id="rotate">Rotate</button>
         <button id="grow">Grow</button>
         <button id="shrink">Shrink</button>
-        <div id="credit">Figures: Low Poly Chess - by <a href="https://sketchfab.com/marcelo.medeirossilva">marcelo.medeirossilva.</a></div>
+        <div id="credit">
+          Figures: Low Poly Chess - by
+          <a href="https://sketchfab.com/marcelo.medeirossilva"
+            >marcelo.medeirossilva.</a
+          >
+        </div>
       </div>
     </div>
   </body>
