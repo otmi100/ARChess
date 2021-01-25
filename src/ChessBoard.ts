@@ -281,7 +281,7 @@ export class ChessBoard {
     return 8 * position.rank + position.file;
   }
 
-  readBoardAndPositionPieces = (): void => {
+  private readBoardAndPositionPieces = (): void => {
     console.log(this);
     let chessGame: Chess;
     if (this.chessGame) {

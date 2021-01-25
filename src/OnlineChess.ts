@@ -40,7 +40,7 @@ export default class OnlineChess {
     };
   }
 
-  getGameUpdates(): void {
+  private getGameUpdates(): void {
     console.log("query api");
     const request = new XMLHttpRequest();
     request.open("GET", API + "/games/" + this.gameId);
@@ -67,7 +67,7 @@ export default class OnlineChess {
     };
   }
 
-  async poll(): Promise<void> {
+  private async poll(): Promise<void> {
     const executePoll = async () => {
       await this.getGameUpdates();
       setTimeout(executePoll, 1500);
