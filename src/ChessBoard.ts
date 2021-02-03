@@ -22,62 +22,6 @@ export type Position = {
   file: number;
 };
 
-class PieceMap {
-  private chessPieces: ChessPiece[] = [];
-  private chessBoardObject3D: Object3D;
-
-  constructor(chessBoard: Object3D) {
-    this.chessBoardObject3D = chessBoard;
-  }
-
-  getPieces(): ChessPiece[] {
-    return this.chessPieces;
-  }
-
-  reset() {
-    this.chessPieces.forEach((piece) => piece.setUpdatedAfterMove(false));
-  }
-
-  hideUnpositioned() {
-    this.chessPieces.forEach((piece) => {
-      if (!piece.getUpdatedAfterMove() && piece.object3D) {
-        console.log(
-          "making piece invisible, because it is not on board anymore"
-        );
-        piece.object3D.visible = false;
-      }
-    });
-  }
-
-  getUnpositionedOrNewPiece(
-    role: Role,
-    color: PlayingColor,
-    position: Position
-  ): ChessPiece {
-    const piece = this.chessPieces.find(
-      (chessPiece) =>
-        chessPiece.getRole() === role &&
-        chessPiece.getColor() === color &&
-        !chessPiece.getUpdatedAfterMove()
-    );
-    if (piece) {
-      piece.setPosition(position);
-      return piece;
-    } else {
-      const newPiece = new ChessPiece(color, role, position);
-      newPiece.getObject3D().then((object3D) => {
-        //console.log("adding object to board");
-        this.chessBoardObject3D.add(object3D);
-        object3D.scale.set(0.25, 0.25, 0.25);
-        //console.log(this.chessBoardObject3D);
-        //console.log(object3D);
-      });
-      this.chessPieces.push(newPiece);
-      return newPiece;
-    }
-  }
-}
-
 export class ChessBoard {
   private chessBoardFields: Map<number, ChessBoardField> = new Map<
     number,
@@ -141,8 +85,8 @@ export class ChessBoard {
       const piece = this.chessBoardFields.get(square)?.placedPiece;
       console.log(piece);
       if (piece) {
-        if (this.chessGame.getGame().turn !== piece.getColor()) {
-          return "It's " + this.chessGame.getGame().turn + "'s turn.";
+        if (this.chessGame.getCachedGame().turn !== piece.getColor()) {
+          return "It's " + this.chessGame.getCachedGame().turn + "'s turn.";
         } else {
           piece.select();
           this.selectedPiece = piece;
@@ -192,6 +136,8 @@ export class ChessBoard {
 
   setBoardPosition(matrix4: Matrix4): void {
     this.chessBoardObject3D.position.setFromMatrixPosition(matrix4);
+    this.chessBoardObject3D.rotation.setFromRotationMatrix(matrix4);
+    //this.chessBoardObject3D.matrix = matrix4;
     this.chessBoardObject3D.visible = true;
   }
 
@@ -208,13 +154,13 @@ export class ChessBoard {
           console.debug(
             "Trying to move. This is the Chessboard before the move."
           );
-          console.debug(debugBoard(this.chessGame.getGame().board));
+          console.debug(debugBoard(this.chessGame.getCachedGame().board));
           console.debug("Trying to move:");
           console.debug(move);
-          if (this.chessGame.getGame().isLegal(move)) {
+          if (this.chessGame.getCachedGame().isLegal(move)) {
             this.chessGame.play(move);
             console.debug("Chess Board after move:");
-            console.debug(debugBoard(this.chessGame.getGame().board));
+            console.debug(debugBoard(this.chessGame.getCachedGame().board));
             this.selectedPiece.setPosition({
               file: position.file,
               rank: position.rank,
@@ -222,15 +168,15 @@ export class ChessBoard {
             this.selectedPiece.unSelect();
             this.removeMoveOptions();
             this.readBoardAndPositionPieces();
-            if (this.chessGame.getGame().isCheckmate()) {
-              console.log(this.chessGame.getGame().outcome()?.winner + "WON!");
+            if (this.chessGame.getCachedGame().isCheckmate()) {
+              console.log(this.chessGame.getCachedGame().outcome()?.winner + "WON!");
               return (
-                this.chessGame.getGame().outcome()?.winner + " WON this match!"
+                this.chessGame.getCachedGame().outcome()?.winner + " WON this match!"
               );
-            } else if (this.chessGame.getGame().isStalemate()) {
+            } else if (this.chessGame.getCachedGame().isStalemate()) {
               console.log("STALEMATE!");
               return "STALEMATE!";
-            } else if (this.chessGame.getGame().isCheck()) {
+            } else if (this.chessGame.getCachedGame().isCheck()) {
               console.log("CHECK!");
               return "CHECK!";
             } else {
@@ -253,7 +199,7 @@ export class ChessBoard {
   private highlightMoveOptions(square: Square) {
     if (this.chessGame) {
       console.log("getting move options");
-      for (const option of this.chessGame.getGame().dests(square)) {
+      for (const option of this.chessGame.getCachedGame().dests(square)) {
         console.log(this.squareToPosition(option));
         const field = this.chessBoardFields.get(option);
         if (field) {
@@ -285,8 +231,9 @@ export class ChessBoard {
     console.log(this);
     let chessGame: Chess;
     if (this.chessGame) {
-      chessGame = this.chessGame.getGame();
+      chessGame = this.chessGame.getCachedGame();
     } else {
+      // If online game has not been startet yet, show default board
       chessGame = Chess.default();
     }
     this.pieceMap.reset();
@@ -361,5 +308,61 @@ export class ChessBoard {
       }
       (<Mesh>field.object3D).material = material;
     });
+  }
+}
+
+class PieceMap {
+  private chessPieces: ChessPiece[] = [];
+  private chessBoardObject3D: Object3D;
+
+  constructor(chessBoard: Object3D) {
+    this.chessBoardObject3D = chessBoard;
+  }
+
+  getPieces(): ChessPiece[] {
+    return this.chessPieces;
+  }
+
+  reset() {
+    this.chessPieces.forEach((piece) => piece.setUpdatedAfterMove(false));
+  }
+
+  hideUnpositioned() {
+    this.chessPieces.forEach((piece) => {
+      if (!piece.getUpdatedAfterMove() && piece.object3D) {
+        console.log(
+          "making piece invisible, because it is not on board anymore"
+        );
+        piece.object3D.visible = false;
+      }
+    });
+  }
+
+  getUnpositionedOrNewPiece(
+    role: Role,
+    color: PlayingColor,
+    position: Position
+  ): ChessPiece {
+    const piece = this.chessPieces.find(
+      (chessPiece) =>
+        chessPiece.getRole() === role &&
+        chessPiece.getColor() === color &&
+        !chessPiece.getUpdatedAfterMove()
+    );
+    if (piece) {
+      piece.setPosition(position);
+      return piece;
+    } else {
+      const newPiece = new ChessPiece(color, role, position);
+      newPiece.getObject3D().then((object3D) => {
+        //console.log("adding object to board");
+        this.chessBoardObject3D.add(object3D);
+        object3D.scale.set(0.25, 0.25, 0.25);
+        //console.log(this.chessBoardObject3D);
+        //console.log(object3D);
+      });
+      this.chessPieces.push(newPiece);
+      return newPiece;
+    }
   }
 }

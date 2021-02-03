@@ -67,11 +67,11 @@ button {
   padding: 12px 6px;
   border: 1px solid #fff;
   border-radius: 4px;
-  background: rgba(0, 0, 0, 0.1);
-  color: #fff;
+  background: rgba(34, 17, 189, 0.74);
+  color: black;
   font: normal 13px sans-serif;
   text-align: center;
-  opacity: 0.5;
+  opacity: 0.7;
   outline: none;
   z-index: 999;
 }

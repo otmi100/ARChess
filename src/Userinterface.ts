@@ -103,7 +103,7 @@ export default class Userinterface {
     this.startGameButton.textContent = reason;
   }
 
-  disableARButton(): void {
+  private disableARButton(): void {
     this.startGameButton.style.display = "";
     this.startGameButton.style.cursor = "auto";
 

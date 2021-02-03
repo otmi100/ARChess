@@ -2,7 +2,7 @@ const path = require('path');
 
 module.exports = {
   entry: {
-    main: "./dist/src/main.js",
+    main: "./dist/src/Main.js",
   },
   output: {
     path: path.join(__dirname, 'build'),

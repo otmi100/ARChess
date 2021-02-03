@@ -22,7 +22,7 @@ import { GameMode } from "./GameMode";
 import HitTest from "./HitTest";
 import Userinterface from "./Userinterface";
 
-export default class Game {
+export default class Main {
   private gameMode: GameMode = GameMode.None;
 
   // Workaround to access new XR features of Navigator, because Typescript definitions dont know the latest features yet and @types/webxr does not seem to be compatible to threejs.
@@ -315,3 +315,4 @@ export default class Game {
     }
   }
 }
+new Main();

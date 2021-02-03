@@ -17,7 +17,7 @@ export default class OnlineChess {
     //get game from server
   }
 
-  getGame(): Chess {
+  getCachedGame(): Chess {
     return this.game;
   }
 
@@ -34,6 +34,7 @@ export default class OnlineChess {
       } else {
         console.warn(request.statusText, request.responseText);
       }
+      this.getGameUpdates(); //Update Board after move
     };
     request.onerror = (e) => {
       console.log(e);
