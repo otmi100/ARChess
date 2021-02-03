@@ -48,7 +48,7 @@ export default class Main {
     ]),
     new MeshBasicMaterial()
   );
-  private chessBoard = new ChessBoard();
+  private chessBoard: ChessBoard | undefined;
 
   private cursor = new Vector3();
   private raycaster = new Raycaster();
@@ -88,19 +88,23 @@ export default class Main {
       this.setup,
       this.placeBoard,
       () => {
-        const chessBoardObject = this.chessBoard.getBoardObject();
-        chessBoardObject.scale.x *= 1.1;
-        chessBoardObject.scale.y *= 1.1;
-        chessBoardObject.scale.z *= 1.1;
+        const chessBoardObject = this.chessBoard?.getBoardObject();
+        if (chessBoardObject) {
+          chessBoardObject.scale.x *= 1.1;
+          chessBoardObject.scale.y *= 1.1;
+          chessBoardObject.scale.z *= 1.1;
+        }
       },
       () => {
-        const chessBoardObject = this.chessBoard.getBoardObject();
-        chessBoardObject.scale.x *= 0.9;
-        chessBoardObject.scale.y *= 0.9;
-        chessBoardObject.scale.z *= 0.9;
+        const chessBoardObject = this.chessBoard?.getBoardObject();
+        if (chessBoardObject) {
+          chessBoardObject.scale.x *= 0.9;
+          chessBoardObject.scale.y *= 0.9;
+          chessBoardObject.scale.z *= 0.9;
+        }
       },
       () => {
-        this.chessBoard.getBoardObject().rotateY(0.1);
+        this.chessBoard?.getBoardObject().rotateY(0.1);
       }
     );
 
@@ -128,11 +132,6 @@ export default class Main {
     });
     this.scene.add(this.controller);
 
-    // Add Chessboard to Scene
-    this.chessBoard.getBoardObject().scale.set(0.05, 0.05, 0.05);
-    this.chessBoard.getBoardObject().visible = false;
-    this.scene.add(this.chessBoard.getBoardObject());
-
     window.addEventListener("resize", this.onWindowResize, false);
   }
 
@@ -146,7 +145,7 @@ export default class Main {
   };
 
   private placeBoard = () => {
-    if (this.reticle.visible) {
+    if (this.reticle.visible && this.chessBoard) {
       console.log("trying to place chessboard");
       //this.chessBoard.setBoardPosition(this.reticle.matrix);
       if (this.refPose) {
@@ -244,7 +243,11 @@ export default class Main {
                   this.renderer.xr.setReferenceSpaceType("local");
                   this.renderer.xr.setSession(session);
 
-                  this.chessBoard.startGame(this.ui.getGameId());
+                  this.chessBoard = new ChessBoard(this.ui.getGameId());
+                  // Add Chessboard to Scene
+                  this.chessBoard.getBoardObject().scale.set(0.05, 0.05, 0.05);
+                  this.chessBoard.getBoardObject().visible = false;
+                  this.scene.add(this.chessBoard.getBoardObject());
                   this.ui.hideStartMenu();
                   console.log("start now!");
 
@@ -277,80 +280,87 @@ export default class Main {
   }
 
   private handlePlay(): void {
-    this.cursor.set(0, 0, 0).applyMatrix4(this.controller.matrixWorld);
-    this.raycastOrigin.set(
-      this.cameraWorldPosition.x,
-      this.cameraWorldPosition.y,
-      this.cameraWorldPosition.z
-    );
-    this.raycastDirection
-      .subVectors(this.cursor, this.raycastOrigin)
-      .normalize();
-    //console.log("raycast from camera"), console.log(cameraWorldPosition);
-    //console.log("raycast to cursor"), console.log(cursor);
-    this.raycaster.set(this.raycastOrigin, this.raycastDirection);
-    const selectedPiece = this.chessBoard.getSelectedPiece();
-    if (selectedPiece) {
-      // move a piece
-      console.log(this.chessBoard.getSelectedPiece());
-      console.log("choose where to move");
-
-      // interact with fields and selected piece
-      const interactiveObjects = this.chessBoard.getAllFieldObjects();
-      interactiveObjects.push(selectedPiece);
-
-      const intersects = this.raycaster.intersectObjects(
-        this.chessBoard.getAllFieldObjects(),
-        true
+    if (this.chessBoard) {
+      this.cursor.set(0, 0, 0).applyMatrix4(this.controller.matrixWorld);
+      this.raycastOrigin.set(
+        this.cameraWorldPosition.x,
+        this.cameraWorldPosition.y,
+        this.cameraWorldPosition.z
       );
+      this.raycastDirection
+        .subVectors(this.cursor, this.raycastOrigin)
+        .normalize();
+      //console.log("raycast from camera"), console.log(cameraWorldPosition);
+      //console.log("raycast to cursor"), console.log(cursor);
+      this.raycaster.set(this.raycastOrigin, this.raycastDirection);
+      const selectedPiece = this.chessBoard.getSelectedPiece();
+      if (selectedPiece) {
+        // move a piece
+        console.log(this.chessBoard.getSelectedPiece());
+        console.log("choose where to move");
 
-      if (intersects.length > 0) {
-        if (intersects[0].object !== selectedPiece) {
-          console.log("found field to move to");
-          console.log(intersects[0].object.position);
-          const result = this.chessBoard.moveSelectedPieceTo({
-            file: intersects[0].object.position.x,
-            rank: Math.abs(intersects[0].object.position.z),
-          });
-          this.ui.showNotification(result);
+        // interact with fields and selected piece
+        const interactiveObjects = this.chessBoard.getAllFieldObjects();
+        interactiveObjects.push(selectedPiece);
+
+        const intersects = this.raycaster.intersectObjects(
+          this.chessBoard.getAllFieldObjects(),
+          true
+        );
+
+        if (intersects.length > 0) {
+          if (intersects[0].object !== selectedPiece) {
+            console.log("found field to move to");
+            console.log(intersects[0].object.position);
+            this.chessBoard
+              .moveSelectedPieceTo({
+                file: intersects[0].object.position.x,
+                rank: Math.abs(intersects[0].object.position.z),
+              })
+              .then((result) => {
+                this.ui.showNotification(result);
+              });
+          }
+          this.chessBoard.unSelectPiece();
         }
-        this.chessBoard.unSelectPiece();
-      }
-    } else {
-      // Select a piece
-      console.log("trying to select piece");
-      console.log(this.chessBoard.getAllVisiblePieceObjects());
-      const intersects = this.raycaster.intersectObjects(
-        this.chessBoard.getAllVisiblePieceObjects(),
-        true
-      );
-      if (intersects.length > 0) {
-        console.log("found intersecting objects");
-        console.log(intersects);
-        let nearestObject = intersects[0].object;
-        let chessPiece: Object3D | null | undefined;
-        while (chessPiece === undefined) {
-          if (
-            nearestObject.parent &&
-            nearestObject.parent.name === "Pieces"
-          ) {
-            chessPiece = nearestObject;
-          } else {
-            if (nearestObject.parent) {
-              nearestObject = nearestObject.parent;
+      } else {
+        // Select a piece
+        console.log("trying to select piece");
+        console.log(this.chessBoard.getAllVisiblePieceObjects());
+        const intersects = this.raycaster.intersectObjects(
+          this.chessBoard.getAllVisiblePieceObjects(),
+          true
+        );
+        if (intersects.length > 0) {
+          console.log("found intersecting objects");
+          console.log(intersects);
+          let nearestObject = intersects[0].object;
+          let chessPiece: Object3D | null | undefined;
+          while (chessPiece === undefined) {
+            if (
+              nearestObject.parent &&
+              nearestObject.parent.name === "Pieces"
+            ) {
+              chessPiece = nearestObject;
             } else {
-              chessPiece = null;
-              console.log("no chess piece found to select");
+              if (nearestObject.parent) {
+                nearestObject = nearestObject.parent;
+              } else {
+                chessPiece = null;
+                console.log("no chess piece found to select");
+              }
             }
           }
-        }
-        if (chessPiece) {
-          console.log("found chess piece to select");
-          console.log(chessPiece.position);
-          const result = this.chessBoard.selectPiece(chessPiece);
-          this.ui.showNotification(result);
+          if (chessPiece) {
+            console.log("found chess piece to select");
+            console.log(chessPiece.position);
+            const result = this.chessBoard.selectPiece(chessPiece);
+            this.ui.showNotification(result);
+          }
         }
       }
+    } else {
+      throw new Error("Game not started yet.");
     }
   }
 }

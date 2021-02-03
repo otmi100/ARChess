@@ -9,6 +9,7 @@ import { ChessPiece } from "./ChessPiece";
 import { board as debugBoard } from "chessops/debug";
 import { Chess, Color as PlayingColor, Move, Role, Square } from "chessops";
 import OnlineChess from "./OnlineChess";
+import { resolve } from "path";
 
 type ChessBoardField = {
   object3D: Object3D;
@@ -30,19 +31,16 @@ export class ChessBoard {
   private chessBoardObject3D: Group = new Group();
   private chessBoardWorldObject: Group = new Group();
   private selectedPiece: ChessPiece | undefined;
-  private chessGame: OnlineChess | undefined;
+  private chessGame: OnlineChess;
   private pieceMap = new PieceMap(this.chessBoardObject3D);
 
-  constructor() {
+  constructor(gameId: number) {
     this.generateFields();
     this.readBoardAndPositionPieces();
     this.chessBoardObject3D.position.set(-4, 0, 4);
-    this.chessBoardObject3D.name = "ChessBoard"
-    this.chessBoardWorldObject.name = "ChessBoardWorld"
+    this.chessBoardObject3D.name = "ChessBoard";
+    this.chessBoardWorldObject.name = "ChessBoardWorld";
     this.chessBoardWorldObject.add(this.chessBoardObject3D);
-  }
-
-  startGame(gameId: number): void {
     console.log("starting new game with id + " + gameId);
     this.chessGame = new OnlineChess(gameId, this.readBoardAndPositionPieces);
   }
@@ -76,28 +74,24 @@ export class ChessBoard {
   }
 
   selectPiece(pieceObject: Object3D): string | undefined {
-    if (this.chessGame) {
-      console.log("Selecting piece");
-      const square: Square = this.positionToSquare({
-        file: pieceObject.position.x,
-        rank: Math.abs(pieceObject.position.z),
-      });
-      console.log(this.squareToPosition(square));
-      const piece = this.chessBoardFields.get(square)?.placedPiece;
-      console.log(piece);
-      if (piece) {
-        if (this.chessGame.getCachedGame().turn !== piece.getColor()) {
-          return "It's " + this.chessGame.getCachedGame().turn + "'s turn.";
-        } else {
-          piece.select();
-          this.selectedPiece = piece;
-          this.highlightMoveOptions(square);
-        }
+    console.log("Selecting piece");
+    const square: Square = this.positionToSquare({
+      file: pieceObject.position.x,
+      rank: Math.abs(pieceObject.position.z),
+    });
+    console.log(this.squareToPosition(square));
+    const piece = this.chessBoardFields.get(square)?.placedPiece;
+    console.log(piece);
+    if (piece) {
+      if (this.chessGame.getCachedGame().turn !== piece.getColor()) {
+        return "It's " + this.chessGame.getCachedGame().turn + "'s turn.";
       } else {
-        throw new Error("Piece not found on this field.");
+        piece.select();
+        this.selectedPiece = piece;
+        this.highlightMoveOptions(square);
       }
     } else {
-      throw new Error("Game has not been startet yet.");
+      throw new Error("Piece not found on this field.");
     }
   }
 
@@ -119,11 +113,12 @@ export class ChessBoard {
     }
   }
 
-  moveSelectedPieceTo(position: Position): string | undefined {
-    if (this.chessGame) {
+  async moveSelectedPieceTo(position: Position): Promise<string> {
+    return new Promise((resolve, reject) => {
       if (this.selectedPiece) {
+        const selectedPiece = this.selectedPiece
         const oldPosition = this.positionToSquare(
-          this.selectedPiece.getPosition()
+          selectedPiece.getPosition()
         );
         const newPosition = this.positionToSquare(position);
 
@@ -136,63 +131,59 @@ export class ChessBoard {
           console.debug("Trying to move:");
           console.debug(move);
           if (this.chessGame.getCachedGame().isLegal(move)) {
-            this.chessGame.play(move);
-            console.debug("Chess Board after move:");
-            console.debug(debugBoard(this.chessGame.getCachedGame().board));
-            this.selectedPiece.setPosition({
-              file: position.file,
-              rank: position.rank,
+            this.chessGame.play(move).then(() => {
+              console.debug("Chess Board after move:");
+              console.debug(debugBoard(this.chessGame.getCachedGame().board));
+              selectedPiece.setPosition({
+                file: position.file,
+                rank: position.rank,
+              });
+              selectedPiece.unSelect();
+              this.removeMoveOptions();
+              this.readBoardAndPositionPieces();
+              resolve(this.gameStatus());
             });
-            this.selectedPiece.unSelect();
-            this.removeMoveOptions();
-            this.readBoardAndPositionPieces();
-            if (this.chessGame.getCachedGame().isCheckmate()) {
-              console.log(
-                this.chessGame.getCachedGame().outcome()?.winner + "WON!"
-              );
-              return (
-                this.chessGame.getCachedGame().outcome()?.winner +
-                " WON this match!"
-              );
-            } else if (this.chessGame.getCachedGame().isStalemate()) {
-              console.log("STALEMATE!");
-              return "STALEMATE!";
-            } else if (this.chessGame.getCachedGame().isCheck()) {
-              console.log("CHECK!");
-              return "CHECK!";
-            } else {
-              return undefined;
-            }
           } else {
-            console.log("Not a legal move!");
+            reject("Not a legal move!");
           }
         } else {
-          throw Error("old position for move not found");
+          reject("old position for move not found");
         }
       } else {
-        throw new Error("No piece selected. Cannot move..");
+        reject("No piece selected. Cannot move..");
       }
+    });
+  }
+
+  private gameStatus(): string {
+    if (this.chessGame.getCachedGame().isCheckmate()) {
+      console.log(this.chessGame.getCachedGame().outcome()?.winner + "WON!");
+      return (
+        this.chessGame.getCachedGame().outcome()?.winner + " WON this match!"
+      );
+    } else if (this.chessGame.getCachedGame().isStalemate()) {
+      console.log("STALEMATE!");
+      return "STALEMATE!";
+    } else if (this.chessGame.getCachedGame().isCheck()) {
+      console.log("CHECK!");
+      return "CHECK!";
     } else {
-      throw new Error("Game has not been startet yet!");
+      return "";
     }
   }
 
   private highlightMoveOptions(square: Square) {
-    if (this.chessGame) {
-      console.log("getting move options");
-      for (const option of this.chessGame.getCachedGame().dests(square)) {
-        console.log(this.squareToPosition(option));
-        const field = this.chessBoardFields.get(option);
-        if (field) {
-          console.log("found field, marking as option");
-          field.isOption = true;
-          console.log(field);
-        }
+    console.log("getting move options");
+    for (const option of this.chessGame.getCachedGame().dests(square)) {
+      console.log(this.squareToPosition(option));
+      const field = this.chessBoardFields.get(option);
+      if (field) {
+        console.log("found field, marking as option");
+        field.isOption = true;
+        console.log(field);
       }
-      this.updateFields();
-    } else {
-      throw new Error("Game has not been startet yet!");
     }
+    this.updateFields();
   }
 
   private removeMoveOptions(): void {
@@ -209,7 +200,6 @@ export class ChessBoard {
   }
 
   private readBoardAndPositionPieces = (): void => {
-    console.log(this);
     let chessGame: Chess;
     if (this.chessGame) {
       chessGame = this.chessGame.getCachedGame();
@@ -233,18 +223,15 @@ export class ChessBoard {
     this.pieceMap.hideUnpositioned();
   };
 
-  private fieldGeometry = new BoxGeometry(1, 0.01, 1);
+  private fieldGeometry = new BoxGeometry(1, 0.3, 1);
   private fieldDarkMaterial = new MeshStandardMaterial({
     color: 0xf5f5dc,
-    opacity: 0.7,
   });
   private fieldLightMaterial = new MeshStandardMaterial({
     color: 0x463f31,
-    opacity: 0.7,
   });
   private fieldOptionMaterial = new MeshStandardMaterial({
     color: 0xcb42f5,
-    opacity: 0.7,
   });
 
   private generateFields() {
@@ -300,7 +287,8 @@ class PieceMap {
 
   constructor(chessBoard: Object3D) {
     chessBoard.add(this.pieceObjects);
-    this.pieceObjects.name = "Pieces"
+    this.pieceObjects.name = "Pieces";
+    this.pieceObjects.position.set(0, 0.35, 0);
   }
 
   getPieces(): ChessPiece[] {
