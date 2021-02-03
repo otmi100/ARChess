@@ -141,7 +141,6 @@ export class ChessPiece {
       if (position) {
         object3D.position.set(position.file, 0, -position.rank);
         object3D.visible = true;
-        console.log(object3D);
       } else {
         object3D.visible = false;
       }

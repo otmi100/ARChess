@@ -49,7 +49,6 @@ export default class OnlineChess {
     request.onload = () => {
       if (request.status >= 200 && request.status < 300) {
         const gameOnline = request.responseText;
-        console.log(makeFen(this.game.toSetup()));
         console.log(gameOnline);
         console.log(makeFen(this.game.toSetup()));
         if (makeFen(this.game.toSetup()) !== gameOnline) {

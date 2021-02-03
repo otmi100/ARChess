@@ -1,7 +1,6 @@
 import {
   BoxGeometry,
   Group,
-  Matrix4,
   Mesh,
   MeshStandardMaterial,
   Object3D,
@@ -29,16 +28,18 @@ export class ChessBoard {
   >();
 
   private chessBoardObject3D: Group = new Group();
+  private chessBoardWorldObject: Group = new Group();
   private selectedPiece: ChessPiece | undefined;
   private chessGame: OnlineChess | undefined;
   private pieceMap = new PieceMap(this.chessBoardObject3D);
 
   constructor() {
     this.generateFields();
-    this.chessBoardObject3D.name = "ChessBoard";
     this.readBoardAndPositionPieces();
-    this.chessBoardObject3D.scale.set(0.05, 0.05, 0.05);
-    this.chessBoardObject3D.visible = false;
+    this.chessBoardObject3D.position.set(-4, 0, 4);
+    this.chessBoardObject3D.name = "ChessBoard"
+    this.chessBoardWorldObject.name = "ChessBoardWorld"
+    this.chessBoardWorldObject.add(this.chessBoardObject3D);
   }
 
   startGame(gameId: number): void {
@@ -71,7 +72,7 @@ export class ChessBoard {
   }
 
   getBoardObject(): Group {
-    return this.chessBoardObject3D;
+    return this.chessBoardWorldObject;
   }
 
   selectPiece(pieceObject: Object3D): string | undefined {
@@ -118,29 +119,6 @@ export class ChessBoard {
     }
   }
 
-  rotateY(radiant = 0.1): void {
-    this.chessBoardObject3D.rotateY(radiant);
-  }
-
-  grow(): void {
-    this.chessBoardObject3D.scale.x *= 1.1;
-    this.chessBoardObject3D.scale.y *= 1.1;
-    this.chessBoardObject3D.scale.z *= 1.1;
-  }
-
-  shrink(): void {
-    this.chessBoardObject3D.scale.x *= 0.9;
-    this.chessBoardObject3D.scale.y *= 0.9;
-    this.chessBoardObject3D.scale.z *= 0.9;
-  }
-
-  setBoardPosition(matrix4: Matrix4): void {
-    this.chessBoardObject3D.position.setFromMatrixPosition(matrix4);
-    this.chessBoardObject3D.rotation.setFromRotationMatrix(matrix4);
-    //this.chessBoardObject3D.matrix = matrix4;
-    this.chessBoardObject3D.visible = true;
-  }
-
   moveSelectedPieceTo(position: Position): string | undefined {
     if (this.chessGame) {
       if (this.selectedPiece) {
@@ -169,9 +147,12 @@ export class ChessBoard {
             this.removeMoveOptions();
             this.readBoardAndPositionPieces();
             if (this.chessGame.getCachedGame().isCheckmate()) {
-              console.log(this.chessGame.getCachedGame().outcome()?.winner + "WON!");
+              console.log(
+                this.chessGame.getCachedGame().outcome()?.winner + "WON!"
+              );
               return (
-                this.chessGame.getCachedGame().outcome()?.winner + " WON this match!"
+                this.chessGame.getCachedGame().outcome()?.winner +
+                " WON this match!"
               );
             } else if (this.chessGame.getCachedGame().isStalemate()) {
               console.log("STALEMATE!");
@@ -267,6 +248,7 @@ export class ChessBoard {
   });
 
   private generateFields() {
+    const fields = new Group();
     for (let file = 0; file < 8; file++) {
       for (let rank = 0; rank < 8; rank++) {
         const square: Square = this.positionToSquare({
@@ -280,7 +262,7 @@ export class ChessBoard {
           material = this.fieldLightMaterial;
         }
         const cube = new Mesh(this.fieldGeometry, material);
-        this.chessBoardObject3D.add(cube);
+        fields.add(cube);
         cube.position.set(file, 0, -rank);
         this.chessBoardFields.set(square, {
           object3D: cube,
@@ -288,6 +270,7 @@ export class ChessBoard {
         });
       }
     }
+    this.chessBoardObject3D.add(fields);
   }
 
   private updateFields() {
@@ -313,10 +296,11 @@ export class ChessBoard {
 
 class PieceMap {
   private chessPieces: ChessPiece[] = [];
-  private chessBoardObject3D: Object3D;
+  private pieceObjects: Group = new Group();
 
   constructor(chessBoard: Object3D) {
-    this.chessBoardObject3D = chessBoard;
+    chessBoard.add(this.pieceObjects);
+    this.pieceObjects.name = "Pieces"
   }
 
   getPieces(): ChessPiece[] {
@@ -356,7 +340,7 @@ class PieceMap {
       const newPiece = new ChessPiece(color, role, position);
       newPiece.getObject3D().then((object3D) => {
         //console.log("adding object to board");
-        this.chessBoardObject3D.add(object3D);
+        this.pieceObjects.add(object3D);
         object3D.scale.set(0.25, 0.25, 0.25);
         //console.log(this.chessBoardObject3D);
         //console.log(object3D);

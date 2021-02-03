@@ -14,6 +14,8 @@ import {
   Group,
   XRFrame,
   XRSession,
+  XRPose,
+  Quaternion,
 } from "three";
 
 import { BufferGeometryUtils } from "three/examples/jsm/utils/BufferGeometryUtils";
@@ -34,6 +36,7 @@ export default class Main {
   private renderer: WebGLRenderer;
   private currentSession: XRSession | null = null;
   private hitTest: HitTest;
+  private refPose: XRPose | undefined;
 
   private cameraWorldPosition = new Vector3();
   //const cameraWorldQuaternion = new Quaternion();
@@ -85,13 +88,19 @@ export default class Main {
       this.setup,
       this.placeBoard,
       () => {
-        this.chessBoard.grow();
+        const chessBoardObject = this.chessBoard.getBoardObject();
+        chessBoardObject.scale.x *= 1.1;
+        chessBoardObject.scale.y *= 1.1;
+        chessBoardObject.scale.z *= 1.1;
       },
       () => {
-        this.chessBoard.shrink();
+        const chessBoardObject = this.chessBoard.getBoardObject();
+        chessBoardObject.scale.x *= 0.9;
+        chessBoardObject.scale.y *= 0.9;
+        chessBoardObject.scale.z *= 0.9;
       },
       () => {
-        this.chessBoard.rotateY();
+        this.chessBoard.getBoardObject().rotateY(0.1);
       }
     );
 
@@ -120,6 +129,8 @@ export default class Main {
     this.scene.add(this.controller);
 
     // Add Chessboard to Scene
+    this.chessBoard.getBoardObject().scale.set(0.05, 0.05, 0.05);
+    this.chessBoard.getBoardObject().visible = false;
     this.scene.add(this.chessBoard.getBoardObject());
 
     window.addEventListener("resize", this.onWindowResize, false);
@@ -137,7 +148,33 @@ export default class Main {
   private placeBoard = () => {
     if (this.reticle.visible) {
       console.log("trying to place chessboard");
-      this.chessBoard.setBoardPosition(this.reticle.matrix);
+      //this.chessBoard.setBoardPosition(this.reticle.matrix);
+      if (this.refPose) {
+        const reference = this.refPose.transform;
+
+        console.log("trying to set board to reference position");
+        console.log(reference);
+        this.chessBoard
+          .getBoardObject()
+          .position.set(
+            reference.position.x,
+            reference.position.y,
+            reference.position.z
+          );
+        this.chessBoard
+          .getBoardObject()
+          .setRotationFromQuaternion(
+            new Quaternion(
+              reference.orientation.x,
+              reference.orientation.y,
+              reference.orientation.z,
+              reference.orientation.w
+            )
+          );
+        this.chessBoard.getBoardObject().visible = true;
+      } else {
+        console.error("no reference pose");
+      }
       this.ui.showNotification(
         "Use Buttons to relocate, grow, shrink or rotate Chessboard. When finished locating, use top button to deactivate Setup-Mode and start playing."
       );
@@ -162,9 +199,11 @@ export default class Main {
         const refPose = this.hitTest.getRefPose(frame);
         if (refPose) {
           this.reticle.matrix.fromArray(refPose.transform.matrix);
+          this.refPose = refPose;
           this.reticle.visible = true;
         } else {
           this.reticle.visible = false;
+          this.refPose = undefined;
         }
       } else if (this.gameMode === GameMode.Play) {
         this.reticle.visible = false;
@@ -286,14 +325,14 @@ export default class Main {
         true
       );
       if (intersects.length > 0) {
-        console.log(intersects);
         console.log("found intersecting objects");
+        console.log(intersects);
         let nearestObject = intersects[0].object;
         let chessPiece: Object3D | null | undefined;
         while (chessPiece === undefined) {
           if (
             nearestObject.parent &&
-            nearestObject.parent.name === "ChessBoard"
+            nearestObject.parent.name === "Pieces"
           ) {
             chessPiece = nearestObject;
           } else {
