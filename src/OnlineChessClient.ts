@@ -4,7 +4,7 @@ import { makeFen, parseFen } from "chessops/fen";
 
 const API = "https://home.envolve-agile.de/chessserver";
 
-export default class OnlineChess {
+export default class OnlineChessClient {
   private gameId: number;
   private game: Chess;
   private afterUpdateFunction: () => void;

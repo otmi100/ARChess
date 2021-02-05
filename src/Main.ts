@@ -21,8 +21,8 @@ import {
   Line,
   BoxGeometry,
   Matrix4,
+  AxesHelper,
 } from "three";
-
 import { BufferGeometryUtils } from "three/examples/jsm/utils/BufferGeometryUtils";
 import { ChessBoard } from "./ChessBoard";
 import { GameMode } from "./GameMode";
@@ -72,18 +72,20 @@ export default class Main {
 
     this.scene = new Scene();
     this.camera = new PerspectiveCamera(
-      70,
+      50,
       window.innerWidth / window.innerHeight,
       0.01,
-      20
+      10
     );
     this.scene.add(this.camera);
     const light = new HemisphereLight(0xffffff, 0xbbbbff, 1);
     light.position.set(0.5, 1, 0.25);
     this.scene.add(light);
 
-    //const axesHelper = new AxesHelper(5);
-    //scene.add(axesHelper);
+    if (Main.VISUAL_DEBUG) {
+      const axesHelper = new AxesHelper(5);
+      this.scene.add(axesHelper);
+    }
 
     this.renderer = new WebGLRenderer({ antialias: true, alpha: true });
     this.renderer.setPixelRatio(window.devicePixelRatio);

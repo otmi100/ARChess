@@ -8,7 +8,7 @@ import {
 import { ChessPiece } from "./ChessPiece";
 import { board as debugBoard } from "chessops/debug";
 import { Color as PlayingColor, Move, Role, Square } from "chessops";
-import OnlineChess from "./OnlineChess";
+import OnlineChess from "./OnlineChessClient";
 
 type ChessBoardField = {
   object3D: Object3D;
