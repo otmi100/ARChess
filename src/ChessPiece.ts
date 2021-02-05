@@ -112,13 +112,14 @@ export class ChessPiece {
           //let object = model.getObjectByName(this.modelName);
           if (model) {
             this.object3D = model;
+            this.object3D.name = "PieceRoot";
             this.applyMaterial(false);
             if (this.getColor() === "white") {
               this.object3D.rotateY(3.1416);
             }
             this.object3D.position.set(
               this.position.file,
-              0,
+              0.35,
               -this.position.rank
             );
             resolve(this.object3D);
@@ -139,7 +140,7 @@ export class ChessPiece {
   setPosition(position: Position): void {
     this.getObject3D().then((object3D) => {
       if (position) {
-        object3D.position.set(position.file, 0, -position.rank);
+        object3D.position.set(position.file, 0.35, -position.rank);
         object3D.visible = true;
       } else {
         object3D.visible = false;

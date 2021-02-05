@@ -7,9 +7,8 @@ import {
 } from "three";
 import { ChessPiece } from "./ChessPiece";
 import { board as debugBoard } from "chessops/debug";
-import { Chess, Color as PlayingColor, Move, Role, Square } from "chessops";
+import { Color as PlayingColor, Move, Role, Square } from "chessops";
 import OnlineChess from "./OnlineChess";
-import { resolve } from "path";
 
 type ChessBoardField = {
   object3D: Object3D;
@@ -116,10 +115,8 @@ export class ChessBoard {
   async moveSelectedPieceTo(position: Position): Promise<string> {
     return new Promise((resolve, reject) => {
       if (this.selectedPiece) {
-        const selectedPiece = this.selectedPiece
-        const oldPosition = this.positionToSquare(
-          selectedPiece.getPosition()
-        );
+        const selectedPiece = this.selectedPiece;
+        const oldPosition = this.positionToSquare(selectedPiece.getPosition());
         const newPosition = this.positionToSquare(position);
 
         if (oldPosition) {
@@ -200,27 +197,22 @@ export class ChessBoard {
   }
 
   private readBoardAndPositionPieces = (): void => {
-    let chessGame: Chess;
     if (this.chessGame) {
-      chessGame = this.chessGame.getCachedGame();
-    } else {
-      // If online game has not been startet yet, show default board
-      chessGame = Chess.default();
+      this.pieceMap.reset();
+      this.chessBoardFields.forEach((field, key) => {
+        const coPiece = this.chessGame.getCachedGame().board.get(key);
+        if (coPiece?.role && coPiece.color) {
+          const arPiece = this.pieceMap.getUnpositionedOrNewPiece(
+            coPiece?.role,
+            coPiece?.color,
+            this.squareToPosition(key)
+          );
+          arPiece.setUpdatedAfterMove(true);
+          field.placedPiece = arPiece;
+        }
+      });
+      this.pieceMap.hideUnpositioned();
     }
-    this.pieceMap.reset();
-    this.chessBoardFields.forEach((field, key) => {
-      const coPiece = chessGame.board.get(key);
-      if (coPiece?.role && coPiece.color) {
-        const arPiece = this.pieceMap.getUnpositionedOrNewPiece(
-          coPiece?.role,
-          coPiece?.color,
-          this.squareToPosition(key)
-        );
-        arPiece.setUpdatedAfterMove(true);
-        field.placedPiece = arPiece;
-      }
-    });
-    this.pieceMap.hideUnpositioned();
   };
 
   private fieldGeometry = new BoxGeometry(1, 0.3, 1);
@@ -235,7 +227,6 @@ export class ChessBoard {
   });
 
   private generateFields() {
-    const fields = new Group();
     for (let file = 0; file < 8; file++) {
       for (let rank = 0; rank < 8; rank++) {
         const square: Square = this.positionToSquare({
@@ -249,7 +240,7 @@ export class ChessBoard {
           material = this.fieldLightMaterial;
         }
         const cube = new Mesh(this.fieldGeometry, material);
-        fields.add(cube);
+        this.chessBoardObject3D.add(cube);
         cube.position.set(file, 0, -rank);
         this.chessBoardFields.set(square, {
           object3D: cube,
@@ -257,7 +248,6 @@ export class ChessBoard {
         });
       }
     }
-    this.chessBoardObject3D.add(fields);
   }
 
   private updateFields() {
@@ -283,12 +273,10 @@ export class ChessBoard {
 
 class PieceMap {
   private chessPieces: ChessPiece[] = [];
-  private pieceObjects: Group = new Group();
+  private chessBoard: Object3D;
 
   constructor(chessBoard: Object3D) {
-    chessBoard.add(this.pieceObjects);
-    this.pieceObjects.name = "Pieces";
-    this.pieceObjects.position.set(0, 0.35, 0);
+    this.chessBoard = chessBoard;
   }
 
   getPieces(): ChessPiece[] {
@@ -328,7 +316,7 @@ class PieceMap {
       const newPiece = new ChessPiece(color, role, position);
       newPiece.getObject3D().then((object3D) => {
         //console.log("adding object to board");
-        this.pieceObjects.add(object3D);
+        this.chessBoard.add(object3D);
         object3D.scale.set(0.25, 0.25, 0.25);
         //console.log(this.chessBoardObject3D);
         //console.log(object3D);

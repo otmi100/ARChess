@@ -16,6 +16,11 @@ import {
   XRSession,
   XRPose,
   Quaternion,
+  LineBasicMaterial,
+  BufferGeometry,
+  Line,
+  BoxGeometry,
+  Matrix4,
 } from "three";
 
 import { BufferGeometryUtils } from "three/examples/jsm/utils/BufferGeometryUtils";
@@ -25,6 +30,8 @@ import HitTest from "./HitTest";
 import Userinterface from "./Userinterface";
 
 export default class Main {
+  static VISUAL_DEBUG = false;
+
   private gameMode: GameMode = GameMode.None;
 
   // Workaround to access new XR features of Navigator, because Typescript definitions dont know the latest features yet and @types/webxr does not seem to be compatible to threejs.
@@ -279,6 +286,31 @@ export default class Main {
     }
   }
 
+  private drawLine(point1: Vector3, point2: Vector3) {
+    const lineMaterial = new LineBasicMaterial({ color: 0x0000ff });
+    const geometry = new BufferGeometry().setFromPoints([point1, point2]);
+    const line = new Line(geometry, lineMaterial);
+    this.scene.add(line);
+  }
+
+  private drawLineInDirection(start: Vector3, direction: Vector3) {
+    direction.normalize();
+
+    const distance = 100; // at what distance to determine pointB
+    const pointB = new Vector3();
+    pointB.addVectors(start, direction.multiplyScalar(distance));
+
+    this.drawLine(start, pointB);
+  }
+
+  private drawCube(matrix: Matrix4, cubeColor: number) {
+    const geometry = new BoxGeometry(0.001, 0.001, 0.001);
+    const material = new MeshBasicMaterial({ color: cubeColor });
+    const cube = new Mesh(geometry, material);
+    cube.position.setFromMatrixPosition(matrix);
+    this.scene.add(cube);
+  }
+
   private handlePlay(): void {
     if (this.chessBoard) {
       this.cursor.set(0, 0, 0).applyMatrix4(this.controller.matrixWorld);
@@ -290,9 +322,12 @@ export default class Main {
       this.raycastDirection
         .subVectors(this.cursor, this.raycastOrigin)
         .normalize();
-      //console.log("raycast from camera"), console.log(cameraWorldPosition);
-      //console.log("raycast to cursor"), console.log(cursor);
       this.raycaster.set(this.raycastOrigin, this.raycastDirection);
+      if (Main.VISUAL_DEBUG) {
+        this.drawLineInDirection(this.raycastOrigin, this.raycastDirection);
+        this.drawCube(this.controller.matrixWorld, 0x00ff00);
+      }
+
       const selectedPiece = this.chessBoard.getSelectedPiece();
       if (selectedPiece) {
         // move a piece
@@ -334,20 +369,21 @@ export default class Main {
         if (intersects.length > 0) {
           console.log("found intersecting objects");
           console.log(intersects);
-          let nearestObject = intersects[0].object;
           let chessPiece: Object3D | null | undefined;
-          while (chessPiece === undefined) {
-            if (
-              nearestObject.parent &&
-              nearestObject.parent.name === "Pieces"
-            ) {
-              chessPiece = nearestObject;
-            } else {
-              if (nearestObject.parent) {
-                nearestObject = nearestObject.parent;
+          for (let i = 0; i < intersects.length && !chessPiece; i++) {
+            let nearestObject = intersects[i].object;
+            while (chessPiece === undefined) {
+              if (nearestObject.name === "PieceRoot") {
+                chessPiece = nearestObject;
               } else {
-                chessPiece = null;
-                console.log("no chess piece found to select");
+                if (nearestObject.parent) {
+                  nearestObject = nearestObject.parent;
+                } else {
+                  chessPiece = null;
+                  console.log(
+                    "went to root of object and couldnt find root-piece to select - trying next intersection object, if there is any.."
+                  );
+                }
               }
             }
           }
@@ -357,6 +393,8 @@ export default class Main {
             const result = this.chessBoard.selectPiece(chessPiece);
             this.ui.showNotification(result);
           }
+        } else {
+          console.log("no intersections found..");
         }
       }
     } else {
