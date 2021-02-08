@@ -35,13 +35,13 @@ export class ChessBoard {
 
   constructor(gameId: number) {
     this.generateFields();
-    this.readBoardAndPositionPieces();
     this.chessBoardObject3D.position.set(-4, 0, 4);
     this.chessBoardObject3D.name = "ChessBoard";
     this.chessBoardWorldObject.name = "ChessBoardWorld";
     this.chessBoardWorldObject.add(this.chessBoardObject3D);
     console.log("starting new game with id + " + gameId);
     this.chessGame = new OnlineChess(gameId, this.readBoardAndPositionPieces);
+    this.readBoardAndPositionPieces();
   }
 
   getAllVisiblePieceObjects(): Object3D[] {
