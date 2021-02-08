@@ -1,15 +1,16 @@
 import { Move } from "chessops";
 import { Chess } from "chessops/chess";
-import { makeFen, parseFen } from "chessops/fen";
+import { parseFen } from "chessops/fen";
 
 const API = "https://home.envolve-agile.de/chessserver";
 
 export default class OnlineChessClient {
   private gameId: number;
-  private game: Chess;
-  private afterUpdateFunction: () => void;
+  private game: Chess | undefined;
+  private afterUpdateFunction: (game: Chess) => void;
+  private lastFen = "";
 
-  constructor(gameId: number, afterUpdateFunction: () => void) {
+  constructor(gameId: number, afterUpdateFunction: (game: Chess) => void) {
     this.gameId = gameId;
     this.game = Chess.default();
     this.afterUpdateFunction = afterUpdateFunction;
@@ -18,7 +19,11 @@ export default class OnlineChessClient {
   }
 
   getCachedGame(): Chess {
-    return this.game;
+    if (this.game) {
+      return this.game;
+    } else {
+      throw new Error("Requested Cached Game before Game started.");
+    }
   }
 
   async play(move: Move): Promise<void> {
@@ -56,11 +61,14 @@ export default class OnlineChessClient {
         if (request.status >= 200 && request.status < 300) {
           const gameOnline = request.responseText;
           console.log(gameOnline);
-          console.log(makeFen(this.game.toSetup()));
-          if (makeFen(this.game.toSetup()) !== gameOnline) {
+          if (this.lastFen !== gameOnline) {
             console.log("Something changed -> updating board.");
-            this.game = Chess.fromSetup(parseFen(gameOnline).unwrap()).unwrap();
-            this.afterUpdateFunction();
+            const newGame = Chess.fromSetup(
+              parseFen(gameOnline).unwrap()
+            ).unwrap();
+            this.lastFen = gameOnline;
+            this.afterUpdateFunction(newGame);
+            this.game = newGame;
           } else {
             console.log("nothing changed... keep polling...");
           }

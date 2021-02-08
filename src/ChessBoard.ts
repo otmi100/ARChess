@@ -7,7 +7,7 @@ import {
 } from "three";
 import { ChessPiece } from "./ChessPiece";
 import { board as debugBoard } from "chessops/debug";
-import { Color as PlayingColor, Move, Role, Square } from "chessops";
+import { Chess, Color as PlayingColor, Move, Role, Square } from "chessops";
 import OnlineChess from "./OnlineChessClient";
 
 type ChessBoardField = {
@@ -41,7 +41,6 @@ export class ChessBoard {
     this.chessBoardWorldObject.add(this.chessBoardObject3D);
     console.log("starting new game with id + " + gameId);
     this.chessGame = new OnlineChess(gameId, this.readBoardAndPositionPieces);
-    this.readBoardAndPositionPieces();
   }
 
   getAllVisiblePieceObjects(): Object3D[] {
@@ -119,7 +118,7 @@ export class ChessBoard {
         const oldPosition = this.positionToSquare(selectedPiece.getPosition());
         const newPosition = this.positionToSquare(position);
 
-        if (oldPosition) {
+        if (oldPosition !== undefined || oldPosition !== null) {
           const move: Move = { from: oldPosition, to: newPosition };
           console.debug(
             "Trying to move. This is the Chessboard before the move."
@@ -137,7 +136,6 @@ export class ChessBoard {
               });
               selectedPiece.unSelect();
               this.removeMoveOptions();
-              this.readBoardAndPositionPieces();
               resolve(this.gameStatus());
             });
           } else {
@@ -196,23 +194,21 @@ export class ChessBoard {
     return 8 * position.rank + position.file;
   }
 
-  private readBoardAndPositionPieces = (): void => {
-    if (this.chessGame) {
-      this.pieceMap.reset();
-      this.chessBoardFields.forEach((field, key) => {
-        const coPiece = this.chessGame.getCachedGame().board.get(key);
-        if (coPiece?.role && coPiece.color) {
-          const arPiece = this.pieceMap.getUnpositionedOrNewPiece(
-            coPiece?.role,
-            coPiece?.color,
-            this.squareToPosition(key)
-          );
-          arPiece.setUpdatedAfterMove(true);
-          field.placedPiece = arPiece;
-        }
-      });
-      this.pieceMap.hideUnpositioned();
-    }
+  private readBoardAndPositionPieces = (game: Chess): void => {
+    this.pieceMap.reset();
+    this.chessBoardFields.forEach((field, key) => {
+      const coPiece = game.board.get(key);
+      if (coPiece?.role && coPiece.color) {
+        const arPiece = this.pieceMap.getUnpositionedOrNewPiece(
+          coPiece?.role,
+          coPiece?.color,
+          this.squareToPosition(key)
+        );
+        arPiece.setUpdatedAfterMove(true);
+        field.placedPiece = arPiece;
+      }
+    });
+    this.pieceMap.hideUnpositioned();
   };
 
   private fieldGeometry = new BoxGeometry(1, 0.3, 1);
