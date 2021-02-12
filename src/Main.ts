@@ -83,31 +83,7 @@ export default class Main {
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.xr.enabled = true;
-    this.ui = new Userinterface(
-      this.renderer.domElement,
-      this.onEnterAR,
-      this.setup,
-      this.placeBoard,
-      () => {
-        const chessBoardObject = this.chessBoard?.getBoardObject();
-        if (chessBoardObject) {
-          chessBoardObject.scale.x *= 1.1;
-          chessBoardObject.scale.y *= 1.1;
-          chessBoardObject.scale.z *= 1.1;
-        }
-      },
-      () => {
-        const chessBoardObject = this.chessBoard?.getBoardObject();
-        if (chessBoardObject) {
-          chessBoardObject.scale.x *= 0.9;
-          chessBoardObject.scale.y *= 0.9;
-          chessBoardObject.scale.z *= 0.9;
-        }
-      },
-      () => {
-        this.chessBoard?.getBoardObject().rotateY(0.1);
-      }
-    );
+    this.ui = this.createUI();
 
     if (this.ui.isVisualDebug()) {
       const axesHelper = new AxesHelper(5);
@@ -139,6 +115,34 @@ export default class Main {
     this.scene.add(this.controller);
 
     window.addEventListener("resize", this.onWindowResize, false);
+  }
+
+  private createUI(): Userinterface {
+    return new Userinterface(
+      this.renderer.domElement,
+      this.onEnterAR,
+      this.setup,
+      this.placeBoard,
+      () => {
+        const chessBoardObject = this.chessBoard?.getBoardObject();
+        if (chessBoardObject) {
+          chessBoardObject.scale.x *= 1.1;
+          chessBoardObject.scale.y *= 1.1;
+          chessBoardObject.scale.z *= 1.1;
+        }
+      },
+      () => {
+        const chessBoardObject = this.chessBoard?.getBoardObject();
+        if (chessBoardObject) {
+          chessBoardObject.scale.x *= 0.9;
+          chessBoardObject.scale.y *= 0.9;
+          chessBoardObject.scale.z *= 0.9;
+        }
+      },
+      () => {
+        this.chessBoard?.getBoardObject().rotateY(0.1);
+      }
+    );
   }
 
   private setup = () => {
