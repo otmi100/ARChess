@@ -30,7 +30,7 @@ import HitTest from "./HitTest";
 import Userinterface from "./Userinterface";
 
 export default class Main {
-  static VISUAL_DEBUG = false;
+  static VISUAL_DEBUG = true;
 
   private gameMode: GameMode = GameMode.None;
 
@@ -59,7 +59,6 @@ export default class Main {
 
   private cursor = new Vector3();
   private raycaster = new Raycaster();
-  private raycastOrigin: Vector3 = new Vector3();
   private raycastDirection: Vector3 = new Vector3();
 
   private controller: Group;
@@ -229,53 +228,59 @@ export default class Main {
   }
 
   private async onEnterAR() {
-    const overlayElement = this.ui.getOverlay();
-    if (this.currentSession === null) {
-      console.log("Trying to start XR Session");
+    if (this.ui.getGameId()) {
+      const overlayElement = this.ui.getOverlay();
+      if (this.currentSession === null) {
+        console.log("Trying to start XR Session");
 
-      this.myNav.xr
-        .requestSession("immersive-ar", {
-          requiredFeatures: ["hit-test"],
-          optionalFeatures: ["dom-overlay"],
-          domOverlay: {
-            root: overlayElement,
-          },
-        })
-        .then((session: XRSession) => {
-          if ("xr" in navigator) {
-            this.myNav.xr
-              .isSessionSupported("immersive-ar")
-              .then((supported: boolean) => {
-                if (supported) {
-                  session.addEventListener("end", this.onSessionEnded);
+        this.myNav.xr
+          .requestSession("immersive-ar", {
+            requiredFeatures: ["hit-test"],
+            optionalFeatures: ["dom-overlay"],
+            domOverlay: {
+              root: overlayElement,
+            },
+          })
+          .then((session: XRSession) => {
+            if ("xr" in navigator) {
+              this.myNav.xr
+                .isSessionSupported("immersive-ar")
+                .then((supported: boolean) => {
+                  if (supported) {
+                    session.addEventListener("end", this.onSessionEnded);
 
-                  this.renderer.xr.setReferenceSpaceType("local");
-                  this.renderer.xr.setSession(session);
+                    this.renderer.xr.setReferenceSpaceType("local");
+                    this.renderer.xr.setSession(session);
 
-                  this.chessBoard = new ChessBoard(this.ui.getGameId());
-                  // Add Chessboard to Scene
-                  this.chessBoard.getBoardObject().scale.set(0.05, 0.05, 0.05);
-                  this.chessBoard.getBoardObject().visible = false;
-                  this.scene.add(this.chessBoard.getBoardObject());
-                  this.ui.hideStartMenu();
-                  console.log("start now!");
+                    this.chessBoard = new ChessBoard(this.ui.getGameId());
+                    // Add Chessboard to Scene
+                    this.chessBoard
+                      .getBoardObject()
+                      .scale.set(0.05, 0.05, 0.05);
+                    this.chessBoard.getBoardObject().visible = false;
+                    this.scene.add(this.chessBoard.getBoardObject());
+                    this.ui.hideStartMenu();
+                    console.log("start now!");
 
-                  this.currentSession = session;
-                  this.currentSession.requestAnimationFrame(this.onXRFrame);
-                } else {
-                  this.ui.showARNotSupported("AR NOT SUPPORTED");
-                }
-              })
-              .catch(this.ui.showARNotSupported("AR NOT SUPPORTED"));
-          }
-        })
-        .catch(this.ui.showARNotSupported);
-    } else {
-      if (window.isSecureContext === false) {
-        this.ui.showARNotSupported("WEBXR NEEDS HTTPS");
+                    this.currentSession = session;
+                    this.currentSession.requestAnimationFrame(this.onXRFrame);
+                  } else {
+                    this.ui.showARNotSupported("AR NOT SUPPORTED");
+                  }
+                })
+                .catch(this.ui.showARNotSupported("AR NOT SUPPORTED"));
+            }
+          })
+          .catch(this.ui.showARNotSupported);
       } else {
-        this.ui.showARNotSupported("WEBXR NOT AVAILABLE");
+        if (window.isSecureContext === false) {
+          this.ui.showARNotSupported("WEBXR NEEDS HTTPS");
+        } else {
+          this.ui.showARNotSupported("WEBXR NOT AVAILABLE");
+        }
       }
+    } else {
+      this.ui.showNotification("Please enter GameID");
     }
   }
 
@@ -288,6 +293,108 @@ export default class Main {
     }
   }
 
+  private handlePlay(): void {
+    if (this.chessBoard) {
+      this.cursor.set(0, 0, 0).applyMatrix4(this.controller.matrixWorld);
+      this.raycastDirection
+        .subVectors(this.cursor, this.cameraWorldPosition)
+        .normalize();
+      this.raycaster.set(this.cameraWorldPosition, this.raycastDirection);
+
+      if (Main.VISUAL_DEBUG) {
+        this.drawLineInDirection(
+          this.cameraWorldPosition,
+          this.raycastDirection
+        );
+        this.drawCube(this.controller.matrixWorld, 0x00ff00);
+      }
+
+      if (this.chessBoard.getSelectedPiece()) {
+        // player wants to move a selected piece
+        this.selectWhereToMovePiece();
+      } else {
+        // no piece selected. select a piece
+        this.selectPieceToMove();
+      }
+    } else {
+      throw new Error("Game not started yet.");
+    }
+  }
+
+  private selectPieceToMove(): void {
+    if (this.chessBoard) {
+      // Select a piece
+      console.log("trying to select piece");
+      console.log(this.chessBoard.getAllVisiblePieceObjects());
+
+      const intersects = this.raycaster.intersectObjects(
+        this.chessBoard.getAllVisiblePieceObjects(),
+        true
+      );
+
+      console.log(intersects);
+      if (intersects.length > 0) {
+        console.log("found intersecting objects");
+        console.log(intersects);
+        let chessPiece: Object3D | null | undefined;
+        for (let i = 0; i < intersects.length && !chessPiece; i++) {
+          chessPiece = this.walkObjectGraphToPieceRoot(intersects[i].object);
+        }
+        if (chessPiece) {
+          console.log("found chess piece to select");
+          console.log(chessPiece.position);
+          const result = this.chessBoard.selectPiece(chessPiece);
+          this.ui.showNotification(result);
+        }
+      } else {
+        console.log("no intersections found..");
+      }
+    }
+  }
+
+  private selectWhereToMovePiece(): void {
+    if (this.chessBoard) {
+      console.log("select where to move the following piece");
+      console.log(this.chessBoard.getSelectedPiece());
+
+      const intersects = this.raycaster.intersectObjects(
+        this.chessBoard.getAllFieldObjects(),
+        true
+      );
+
+      if (intersects.length > 0) {
+        if (intersects[0].object !== this.chessBoard.getSelectedPiece()) {
+          console.log("found field to move to");
+          console.log(intersects[0].object.position);
+          this.chessBoard
+            .moveSelectedPieceTo({
+              file: intersects[0].object.position.x,
+              rank: Math.abs(intersects[0].object.position.z),
+            })
+            .then((result) => {
+              this.ui.showNotification(result);
+            });
+        }
+        this.chessBoard.unSelectPiece();
+      }
+    }
+  }
+
+  private walkObjectGraphToPieceRoot(object: Object3D): Object3D | undefined {
+    while (object.parent) {
+      if (object.name === "PieceRoot") {
+        return object;
+      } else {
+        object = object.parent;
+      }
+    }
+    console.log(
+      "went to root of object and couldnt find root-piece to select."
+    );
+    return undefined;
+  }
+
+  // Visual Debug Methods
   private drawLine(point1: Vector3, point2: Vector3) {
     const lineMaterial = new LineBasicMaterial({ color: 0x0000ff });
     const geometry = new BufferGeometry().setFromPoints([point1, point2]);
@@ -311,97 +418,6 @@ export default class Main {
     const cube = new Mesh(geometry, material);
     cube.position.setFromMatrixPosition(matrix);
     this.scene.add(cube);
-  }
-
-  private handlePlay(): void {
-    if (this.chessBoard) {
-      this.cursor.set(0, 0, 0).applyMatrix4(this.controller.matrixWorld);
-      this.raycastOrigin.set(
-        this.cameraWorldPosition.x,
-        this.cameraWorldPosition.y,
-        this.cameraWorldPosition.z
-      );
-      this.raycastDirection
-        .subVectors(this.cursor, this.raycastOrigin)
-        .normalize();
-      this.raycaster.set(this.raycastOrigin, this.raycastDirection);
-      if (Main.VISUAL_DEBUG) {
-        this.drawLineInDirection(this.raycastOrigin, this.raycastDirection);
-        this.drawCube(this.controller.matrixWorld, 0x00ff00);
-      }
-
-      const selectedPiece = this.chessBoard.getSelectedPiece();
-      if (selectedPiece) {
-        // move a piece
-        console.log(this.chessBoard.getSelectedPiece());
-        console.log("choose where to move");
-
-        // interact with fields and selected piece
-        const interactiveObjects = this.chessBoard.getAllFieldObjects();
-        interactiveObjects.push(selectedPiece);
-
-        const intersects = this.raycaster.intersectObjects(
-          this.chessBoard.getAllFieldObjects(),
-          true
-        );
-
-        if (intersects.length > 0) {
-          if (intersects[0].object !== selectedPiece) {
-            console.log("found field to move to");
-            console.log(intersects[0].object.position);
-            this.chessBoard
-              .moveSelectedPieceTo({
-                file: intersects[0].object.position.x,
-                rank: Math.abs(intersects[0].object.position.z),
-              })
-              .then((result) => {
-                this.ui.showNotification(result);
-              });
-          }
-          this.chessBoard.unSelectPiece();
-        }
-      } else {
-        // Select a piece
-        console.log("trying to select piece");
-        console.log(this.chessBoard.getAllVisiblePieceObjects());
-        const intersects = this.raycaster.intersectObjects(
-          this.chessBoard.getAllVisiblePieceObjects(),
-          true
-        );
-        if (intersects.length > 0) {
-          console.log("found intersecting objects");
-          console.log(intersects);
-          let chessPiece: Object3D | null | undefined;
-          for (let i = 0; i < intersects.length && !chessPiece; i++) {
-            let nearestObject = intersects[i].object;
-            while (chessPiece === undefined) {
-              if (nearestObject.name === "PieceRoot") {
-                chessPiece = nearestObject;
-              } else {
-                if (nearestObject.parent) {
-                  nearestObject = nearestObject.parent;
-                } else {
-                  chessPiece = null;
-                  console.log(
-                    "went to root of object and couldnt find root-piece to select - trying next intersection object, if there is any.."
-                  );
-                }
-              }
-            }
-          }
-          if (chessPiece) {
-            console.log("found chess piece to select");
-            console.log(chessPiece.position);
-            const result = this.chessBoard.selectPiece(chessPiece);
-            this.ui.showNotification(result);
-          }
-        } else {
-          console.log("no intersections found..");
-        }
-      }
-    } else {
-      throw new Error("Game not started yet.");
-    }
   }
 }
 new Main();
