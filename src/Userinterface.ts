@@ -17,6 +17,7 @@ export default class Userinterface {
   private setupMenu = document.getElementById("setupMenu");
 
   private gameIdInput = <HTMLInputElement>document.getElementById("gameid");
+  private visualDebug = <HTMLInputElement>document.getElementById("visualDebug");
   private startGameButton = <HTMLButtonElement>(
     document.getElementById("startGame")
   );
@@ -80,8 +81,17 @@ export default class Userinterface {
     this.setupButton.style.visibility = "visible";
     this.startGameButton.style.visibility = "hidden";
     this.gameIdInput.style.visibility = "hidden";
+    this.visualDebug.style.visibility = "hidden";
     if (this.startDiv) {
       this.startDiv.style.visibility = "hidden";
+    }
+  }
+
+  isVisualDebug(): boolean {
+    if(this.visualDebug.checked) {
+      return true;
+    } else {
+      return false;
     }
   }
 

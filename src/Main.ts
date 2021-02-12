@@ -30,8 +30,6 @@ import HitTest from "./HitTest";
 import Userinterface from "./Userinterface";
 
 export default class Main {
-  static VISUAL_DEBUG = true;
-
   private gameMode: GameMode = GameMode.None;
 
   // Workaround to access new XR features of Navigator, because Typescript definitions dont know the latest features yet and @types/webxr does not seem to be compatible to threejs.
@@ -81,11 +79,6 @@ export default class Main {
     light.position.set(0.5, 1, 0.25);
     this.scene.add(light);
 
-    if (Main.VISUAL_DEBUG) {
-      const axesHelper = new AxesHelper(5);
-      this.scene.add(axesHelper);
-    }
-
     this.renderer = new WebGLRenderer({ antialias: true, alpha: true });
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -115,6 +108,11 @@ export default class Main {
         this.chessBoard?.getBoardObject().rotateY(0.1);
       }
     );
+
+    if (this.ui.isVisualDebug()) {
+      const axesHelper = new AxesHelper(5);
+      this.scene.add(axesHelper);
+    }
 
     // Add hit-test & reticle
     this.hitTest = new HitTest(this.renderer);
@@ -301,7 +299,7 @@ export default class Main {
         .normalize();
       this.raycaster.set(this.cameraWorldPosition, this.raycastDirection);
 
-      if (Main.VISUAL_DEBUG) {
+      if (this.ui.isVisualDebug()) {
         this.drawLineInDirection(
           this.cameraWorldPosition,
           this.raycastDirection
