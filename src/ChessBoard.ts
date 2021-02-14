@@ -30,7 +30,7 @@ export class ChessBoard {
   private chessBoardObject3D: Group = new Group();
   private chessBoardWorldObject: Group = new Group();
   private selectedPiece: ChessPiece | undefined;
-  private chessGame: OnlineChess;
+  private onlineGame: OnlineChess;
   private pieceMap = new PieceMap(this.chessBoardObject3D);
 
   constructor(gameId: number) {
@@ -40,7 +40,7 @@ export class ChessBoard {
     this.chessBoardWorldObject.name = "ChessBoardWorld";
     this.chessBoardWorldObject.add(this.chessBoardObject3D);
     console.log("starting new game with id + " + gameId);
-    this.chessGame = new OnlineChess(gameId, this.readBoardAndPositionPieces);
+    this.onlineGame = new OnlineChess(gameId, this.readBoardAndPositionPieces);
   }
 
   getAllVisiblePieceObjects(): Object3D[] {
@@ -81,8 +81,8 @@ export class ChessBoard {
     const piece = this.chessBoardFields.get(square)?.placedPiece;
     console.log(piece);
     if (piece) {
-      if (this.chessGame.getCachedGame().turn !== piece.getColor()) {
-        return "It's " + this.chessGame.getCachedGame().turn + "'s turn.";
+      if (this.onlineGame.getCachedGame().turn !== piece.getColor()) {
+        return "It's " + this.onlineGame.getCachedGame().turn + "'s turn.";
       } else {
         piece.select();
         this.selectedPiece = piece;
@@ -123,13 +123,13 @@ export class ChessBoard {
           console.debug(
             "Trying to move. This is the Chessboard before the move."
           );
-          console.debug(debugBoard(this.chessGame.getCachedGame().board));
+          console.debug(debugBoard(this.onlineGame.getCachedGame().board));
           console.debug("Trying to move:");
           console.debug(move);
-          if (this.chessGame.getCachedGame().isLegal(move)) {
-            this.chessGame.play(move).then(() => {
+          if (this.onlineGame.getCachedGame().isLegal(move)) {
+            this.onlineGame.play(move).then(() => {
               console.debug("Chess Board after move:");
-              console.debug(debugBoard(this.chessGame.getCachedGame().board));
+              console.debug(debugBoard(this.onlineGame.getCachedGame().board));
               selectedPiece.setPosition({
                 file: position.file,
                 rank: position.rank,
@@ -151,15 +151,15 @@ export class ChessBoard {
   }
 
   private gameStatus(): string {
-    if (this.chessGame.getCachedGame().isCheckmate()) {
-      console.log(this.chessGame.getCachedGame().outcome()?.winner + "WON!");
+    if (this.onlineGame.getCachedGame().isCheckmate()) {
+      console.log(this.onlineGame.getCachedGame().outcome()?.winner + "WON!");
       return (
-        this.chessGame.getCachedGame().outcome()?.winner + " WON this match!"
+        this.onlineGame.getCachedGame().outcome()?.winner + " WON this match!"
       );
-    } else if (this.chessGame.getCachedGame().isStalemate()) {
+    } else if (this.onlineGame.getCachedGame().isStalemate()) {
       console.log("STALEMATE!");
       return "STALEMATE!";
-    } else if (this.chessGame.getCachedGame().isCheck()) {
+    } else if (this.onlineGame.getCachedGame().isCheck()) {
       console.log("CHECK!");
       return "CHECK!";
     } else {
@@ -169,7 +169,7 @@ export class ChessBoard {
 
   private highlightMoveOptions(square: Square) {
     console.log("getting move options");
-    for (const option of this.chessGame.getCachedGame().dests(square)) {
+    for (const option of this.onlineGame.getCachedGame().dests(square)) {
       console.log(this.squareToPosition(option));
       const field = this.chessBoardFields.get(option);
       if (field) {
