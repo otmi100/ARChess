@@ -109,7 +109,7 @@ export default class Main {
     this.controller = this.renderer.xr.getController(0);
     this.controller.addEventListener("select", () => {
       if (this.gameMode === GameMode.Play) {
-        this.handlePlay();
+        this.handleTouch();
       }
     });
     this.scene.add(this.controller);
@@ -295,31 +295,29 @@ export default class Main {
     }
   }
 
-  private handlePlay(): void {
-    if (this.chessBoard) {
-      this.cursor.set(0, 0, 0).applyMatrix4(this.controller.matrixWorld);
-      this.raycastDirection
-        .subVectors(this.cursor, this.cameraWorldPosition)
-        .normalize();
-      this.raycaster.set(this.cameraWorldPosition, this.raycastDirection);
-
-      if (this.ui.isVisualDebug()) {
-        this.drawLineInDirection(
-          this.cameraWorldPosition,
-          this.raycastDirection
-        );
-        this.drawCube(this.controller.matrixWorld, 0x00ff00);
-      }
-
+  private handleTouch(): void {
+    if (this.gameMode === GameMode.Play && this.chessBoard) {
+      this.executeRaycast();
       if (this.chessBoard.getSelectedPiece()) {
         // player wants to move a selected piece
         this.selectWhereToMovePiece();
       } else {
-        // no piece selected. select a piece
+        // no piece selected yet. player wants to select a piece
         this.selectPieceToMove();
       }
-    } else {
-      throw new Error("Game not started yet.");
+    }
+  }
+
+  private executeRaycast(): void {
+    this.cursor.set(0, 0, 0).applyMatrix4(this.controller.matrixWorld);
+    this.raycastDirection
+      .subVectors(this.cursor, this.cameraWorldPosition)
+      .normalize();
+    this.raycaster.set(this.cameraWorldPosition, this.raycastDirection);
+
+    if (this.ui.isVisualDebug()) {
+      this.drawLineInDirection(this.cameraWorldPosition, this.raycastDirection);
+      this.drawCube(this.controller.matrixWorld, 0x00ff00);
     }
   }
 
